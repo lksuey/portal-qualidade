@@ -1,0 +1,2506 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal da Qualidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+/* =========================================================================
+   PORTAL DA QUALIDADE: biblioteca operacional pesquisável (versão pública)
+
+   Um arquivo de front end (Index.html) mais o back end em Apps Script
+   (Codigo.gs). O conteúdo (checklists, roteiros, referências) fica em arrays
+   JavaScript neste arquivo e é fictício nesta versão. As edições feitas por
+   Admin ficam numa planilha, como "diffs" aplicados por cima do conteúdo
+   padrão.
+
+   Paleta: as mesmas 4 cores trocam de papel entre os temas: #F3E8EE é fundo
+   no claro e texto no escuro; #002A22 é texto no claro e fundo no escuro.
+   #86CD82 é o acento principal, #B2D3A8 o realce secundário.
+   ========================================================================= */
+
+  :root {
+    --bg:            #f3e8ee;
+    --bg-soft:       #ecdce4;
+    --surface:       #ffffff;
+    --surface-2:     #faf3f6;
+    --surface-3:     #f2e4ea;
+    --border:        #e2cdd6;
+    --border-strong: #cdb0bc;
+    --text:          #002a22;
+    --text-2:        #3d5850;
+    --text-3:        #6c8880;
+    --accent:        #4f9c4c;
+    --accent-bg:     #86cd82;
+    --accent-rgb:    79,156,76;
+    --accent-soft:   #e3f2e0;
+    --accent-ink:    #002a22;
+    --secundaria:    #b2d3a8;
+    --secundaria-rgb:178,211,168;
+    --ok:    #3f8f52; --ok-rgb:    63,143,82;
+    --warn:  #b9862e; --warn-rgb:  185,134,46;
+    --bad:   #b23b35; --bad-rgb:   178,59,53;
+    --bad-soft: #fbeceb;
+    --track:         #ecdce4;
+    --shadow:        0 1px 2px rgba(0,42,34,.06), 0 8px 24px rgba(0,42,34,.07);
+    --shadow-lg:     0 4px 10px rgba(0,42,34,.08), 0 20px 44px rgba(0,42,34,.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg:            #002a22;
+      --bg-soft:       #013a2f;
+      --surface:       #05372c;
+      --surface-2:     #073f33;
+      --surface-3:     #0a4a3c;
+      --border:        #0f5747;
+      --border-strong: #196c58;
+      --text:          #f3e8ee;
+      --text-2:        #c3d9d1;
+      --text-3:        #8fb0a5;
+      --accent:        #86cd82;
+      --accent-bg:     #86cd82;
+      --accent-rgb:    134,205,130;
+      --accent-soft:   #0c4a3a;
+      --accent-ink:    #002a22;
+      --secundaria:    #b2d3a8;
+      --secundaria-rgb:178,211,168;
+      --ok:    #86cd82; --ok-rgb:    134,205,130;
+      --warn:  #e0bd63; --warn-rgb:  224,189,99;
+      --bad:   #e0928c; --bad-rgb:   224,146,140;
+      --bad-soft: #3a1614;
+      --track:         #0a4a3c;
+      --shadow:        0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.3);
+      --shadow-lg:     0 4px 10px rgba(0,0,0,.4), 0 24px 48px rgba(0,0,0,.42);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:            #002a22;
+    --bg-soft:       #013a2f;
+    --surface:       #05372c;
+    --surface-2:     #073f33;
+    --surface-3:     #0a4a3c;
+    --border:        #0f5747;
+    --border-strong: #196c58;
+    --text:          #f3e8ee;
+    --text-2:        #c3d9d1;
+    --text-3:        #8fb0a5;
+    --accent:        #86cd82;
+    --accent-bg:     #86cd82;
+    --accent-rgb:    134,205,130;
+    --accent-soft:   #0c4a3a;
+    --accent-ink:    #002a22;
+    --secundaria:    #b2d3a8;
+    --secundaria-rgb:178,211,168;
+    --ok:    #86cd82; --ok-rgb:    134,205,130;
+    --warn:  #e0bd63; --warn-rgb:  224,189,99;
+    --bad:   #e0928c; --bad-rgb:   224,146,140;
+    --bad-soft: #3a1614;
+    --track:         #0a4a3c;
+    --shadow:        0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.3);
+    --shadow-lg:     0 4px 10px rgba(0,0,0,.4), 0 24px 48px rgba(0,0,0,.42);
+  }
+
+  * { box-sizing: border-box; }
+  html { font-size: 15px; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+  /* body em coluna flex + main crescendo (flex:1) — o rodapé fica sempre no
+     mínimo na base da viewport, não "pulando" pra cima em abas com pouco
+     conteúdo (Cobrança, Seguro, Suporte) e descendo normalmente quando o
+     conteúdo é alto. Bug relatado pelo usuário (08/09): "o footer está se
+     movendo de acordo com a quantidade de dados presentes na aba". */
+  body {
+    margin: 0; min-height: 100vh; overflow-x: hidden;
+    display: flex; flex-direction: column;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.5; transition: background-color .25s ease, color .2s ease;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  h1, h2, h3, .display { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -.015em; }
+  a { color: inherit; }
+  button { font: inherit; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; border: 2px solid var(--bg); }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+  main.wrap { flex: 1 0 auto; width: 100%; }
+
+  #topbar {
+    position: sticky; top: 0; z-index: 30;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
+  #topbar .inner { display: flex; align-items: center; gap: 14px; padding: 14px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; cursor: pointer; }
+  .brand .badge-ico {
+    width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; background: var(--accent-bg); color: var(--accent-ink); flex-shrink: 0;
+  }
+  /* Logo no lugar do ícone genérico (topbar e tela de login), em SVG. Duas
+     versões: traço escuro no tema claro, traço claro no tema escuro. Aqui há
+     só um marcador neutro; troque pelo logo da sua organização. */
+  .brand-logo {
+    height: 33px; aspect-ratio: 764 / 495; display: block; flex-shrink: 0;
+    background-size: contain; background-position: center; background-repeat: no-repeat;
+  }
+  .brand-logo-cor { background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3NjQgNDk1Ij48cmVjdCB4PSIzMCIgeT0iMTEwIiB3aWR0aD0iMTcwIiBoZWlnaHQ9IjE3MCIgcng9IjQwIiBmaWxsPSIjMDAyQTIyIi8+PHRleHQgeD0iMjI1IiB5PSIyMTUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyNSIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzAwMkEyMiI+RXhhbXBsZTwvdGV4dD48dGV4dCB4PSIyMjUiIHk9IjMzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBIZWx2ZXRpY2EsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTI1IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMDAyQTIyIj5Db21wYW55PC90ZXh0Pjwvc3ZnPg=='); }
+  .brand-logo-branco { background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3NjQgNDk1Ij48cmVjdCB4PSIzMCIgeT0iMTEwIiB3aWR0aD0iMTcwIiBoZWlnaHQ9IjE3MCIgcng9IjQwIiBmaWxsPSIjRjNFOEVFIi8+PHRleHQgeD0iMjI1IiB5PSIyMTUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgSGVsdmV0aWNhLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyNSIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI0YzRThFRSI+RXhhbXBsZTwvdGV4dD48dGV4dCB4PSIyMjUiIHk9IjMzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBIZWx2ZXRpY2EsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTI1IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjRjNFOEVFIj5Db21wYW55PC90ZXh0Pjwvc3ZnPg=='); }
+  .brand-logo-branco { display: none; }
+  :root[data-theme="dark"] .brand-logo-cor { display: none; }
+  :root[data-theme="dark"] .brand-logo-branco { display: block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .brand-logo-cor { display: none; }
+    :root:not([data-theme="light"]) .brand-logo-branco { display: block; }
+  }
+  .brand-textos { display: flex; flex-direction: column; line-height: 1.2; }
+  .brand-titulo { font-weight: 800; font-size: 1.02rem; }
+  .brand-sub {
+    font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3);
+  }
+  #categoriaNav { display: flex; gap: 4px; margin-left: 8px; overflow-x: auto; scrollbar-width: none; }
+  #categoriaNav::-webkit-scrollbar { display: none; }
+  /* pop-in leve quando a aba fica ativa (classe .on) + "afundar" no clique
+     (:active) — pedido do usuário (09/09): "coloca uma animação de
+     transição pós click nos botões de hover top e nos de checklist venda". */
+  @keyframes tabPop {
+    0% { transform: scale(.92); }
+    55% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  .cat-tab {
+    all: unset; cursor: pointer; padding: 8px 14px; border-radius: 99px; font-weight: 600;
+    font-size: .88rem; color: var(--text-2); white-space: nowrap;
+    transition: background .15s ease, color .15s ease, transform .12s ease;
+  }
+  .cat-tab:hover { background: var(--surface-3); color: var(--text); }
+  .cat-tab:active { transform: scale(.93); }
+  .cat-tab.on { background: var(--accent-bg); color: var(--accent-ink); animation: tabPop .32s ease; }
+  .icon-btn {
+    all: unset; cursor: pointer; width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; color: var(--text-2);
+    border: 1px solid var(--border); position: relative; flex-shrink: 0;
+    transition: background .15s ease, color .15s ease;
+  }
+  .icon-btn:hover { background: var(--surface-3); color: var(--text); }
+  /* Botão de sair fica vermelho no hover — pedido do usuário (09/09). */
+  #btnSair:hover { background: var(--bad-soft); color: var(--bad); border-color: rgba(var(--bad-rgb), .35); }
+  .icon-btn .dot {
+    position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--bad); border: 2px solid var(--surface);
+  }
+
+  .hero { padding: 46px 0 30px; }
+  .hero .kicker {
+    display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace;
+    font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); padding: 5px 11px; border-radius: 99px; margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 2.15rem; font-weight: 800; margin: 0 0 10px; letter-spacing: -.02em; }
+  .hero p { font-size: 1.02rem; color: var(--text-2); max-width: 640px; margin: 0; }
+
+  #gridSetores { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding-bottom: 60px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+  .card-setor {
+    padding: 20px; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .card-setor:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
+  .badge-ico-lg {
+    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    background: var(--accent-soft); color: var(--accent); flex-shrink: 0;
+  }
+  .card-setor h3 { font-size: 1.15rem; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+  .card-setor .docs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; font-size: .68rem; font-weight: 700;
+    letter-spacing: .03em; text-transform: uppercase; padding: 4px 9px; border-radius: 6px;
+    background: var(--surface-3); color: var(--text-2); font-family: 'JetBrains Mono', monospace;
+  }
+  .chip.acento { background: var(--accent-soft); color: var(--accent); }
+  /* margin-top:auto empurra o rodapé pro fim do card — sem isso, cards com
+     menos chips (Cobrança) ficavam com "Ver setor" logo depois do conteúdo,
+     bem acima do rodapé dos vizinhos esticados pela mesma linha do grid.
+     Bug relatado pelo usuário (08/09): "bug de posicionamento no botão ver
+     setor". */
+  .card-setor .rodape { display: flex; align-items: center; justify-content: flex-end; font-size: .78rem; color: var(--accent); font-weight: 700; gap: 3px; margin-top: auto; }
+
+  /* ---------- Página de setor ---------- */
+  /* padding-top dá respiro entre o topbar (sticky) e o botão voltar — antes
+     o botão ficava colado no topbar e o hover dele "espremia" o clique.
+     Botão também ganhou padding/raio próprios (antes era só texto sem área
+     de toque folgada). Bug relatado pelo usuário (08/09): "o botão de
+     voltar... está sendo pressionado em termos de pouco espaço pelo hover
+     do top". Aplica também em #paginaReferencia (Filas de Transferência,
+     Códigos dos Bancos) — ficou de fora na primeira correção e reproduziu
+     o mesmo bug lá (relatado de novo pelo usuário em 08/09). */
+  #paginaSetor, #paginaReferencia { padding: 28px 0 60px; }
+  .voltar {
+    all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    font-size: .86rem; font-weight: 700; color: var(--text-2); margin-bottom: 22px;
+    padding: 8px 12px; border-radius: 9px; transition: background .15s ease, color .15s ease;
+  }
+  .voltar:hover { color: var(--text); background: var(--surface-3); }
+  .setor-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+  .setor-head h1 { font-size: 1.7rem; margin: 0; }
+
+  .tabs-doc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .tab-doc {
+    all: unset; cursor: pointer; padding: 9px 16px; border-radius: 10px; font-weight: 700; font-size: .86rem;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
+    transition: background .15s ease, color .15s ease, border-color .15s ease, transform .12s ease;
+  }
+  .tab-doc:hover { border-color: var(--border-strong); color: var(--text); }
+  .tab-doc:active { transform: scale(.95); }
+  .tab-doc.on { background: var(--accent-bg); color: var(--accent-ink); border-color: transparent; animation: tabPop .32s ease; }
+
+  .classificacoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 10px; margin-bottom: 22px; }
+  .classe-box { border-radius: 12px; padding: 12px 14px; font-size: .82rem; font-weight: 700; color: #fff; }
+  .classe-excelente { background: var(--ok); }
+  .classe-bom { background: var(--secundaria); color: var(--accent-ink); }
+  .classe-ruim { background: var(--warn); }
+  .classe-box span { display: block; font-size: .72rem; font-weight: 500; opacity: .85; margin-top: 2px; }
+
+  .grupo-criterios { margin-bottom: 22px; }
+  .grupo-criterios h4 {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 10px;
+  }
+  .criterio-row {
+    display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--border);
+    border-radius: 11px; margin-bottom: 8px; background: var(--surface);
+  }
+  .criterio-row p { margin: 0; font-size: .89rem; color: var(--text); flex: 1; }
+  .pontos-badge {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: .82rem; padding: 5px 10px;
+    border-radius: 8px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; flex-shrink: 0;
+  }
+
+  .graves-box { border: 1.5px solid var(--bad); border-radius: 14px; padding: 18px; background: var(--bad-soft); margin-top: 26px; }
+  .graves-box h4 {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: .95rem; font-weight: 800; color: var(--bad); margin: 0 0 4px;
+  }
+  .graves-box h4 > span:first-child { display: flex; align-items: center; gap: 7px; }
+  .graves-box .sub { font-size: .8rem; color: var(--text-2); margin: 0 0 14px; }
+  .grave-row {
+    display: flex; align-items: center; gap: 14px; padding: 11px 14px; border-radius: 10px;
+    background: var(--surface); margin-bottom: 7px; border: 1px solid rgba(var(--bad-rgb), .25);
+  }
+  .grave-row p { margin: 0; font-size: .86rem; color: var(--text); flex: 1; }
+  .grave-row .pontos-badge { background: var(--bad); color: #fff; }
+
+  /* ---------- Script (passo a passo / referência) ---------- */
+  .bloco-script {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; margin-bottom: 14px; box-shadow: var(--shadow);
+  }
+  .bloco-script .cabecalho { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+  .bloco-script .cabecalho-textos { flex: 1; min-width: 0; }
+  .bloco-script .num {
+    width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent);
+    font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: .88rem; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bloco-script h3 { margin: 0; font-size: 1.02rem; }
+  .bloco-script .subtitulo { font-size: .82rem; color: var(--text-2); margin: 2px 0 0; }
+  .fala-item { border-top: 1px solid var(--border); padding: 12px 0 0; margin-top: 12px; }
+  .fala-item:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .fala-item .rotulo {
+    display: inline-block; font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 5px;
+  }
+  /* Rótulo que é um comando de verdade (começa com "/") — ganha um "chip"
+     mono em negrito pra se destacar do rótulo comum. Pedido do usuário
+     (08/09): "preciso que todo comando sofra um pouco de negrito para que
+     o usuario consiga visualizar melhor". */
+  .fala-item .rotulo.rotulo-cmd {
+    font-family: 'JetBrains Mono', monospace; font-size: .74rem; text-transform: none;
+    background: var(--accent-soft); padding: 3px 8px; border-radius: 6px; letter-spacing: 0;
+  }
+  .fala-item p { margin: 0; font-size: .89rem; color: var(--text-2); white-space: pre-line; }
+  /* moldura-imagem centraliza a imagem horizontalmente e limita a largura
+     máxima pra ela não esticar até a borda da página em telas largas.
+     Pedido do usuário (08/09): "coloque as imagens em molduras e as
+     centralize em quesito posicionamento horizontal na pagina". */
+  .moldura-imagem { display: flex; justify-content: center; margin-top: 14px; }
+  .imagem-referencia {
+    display: block; width: 100%; max-width: 760px; border-radius: 16px; border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+
+  /* ---------- Modal de novidade ---------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100; background: rgba(0,20,15,.45);
+    backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  /* A confirmação (editar/excluir) precisa SEMPRE ficar acima do modal de
+     edição — antes os dois tinham o mesmo z-index e, como o de edição vem
+     depois no HTML, ele ficava por cima e escondia a confirmação. Bug
+     relatado pelo usuário (14/09): "a tela que tem o botão salvar
+     alterações não sai e isso faz com que a confirmação... fique atras". */
+  #overlayConfirmar { z-index: 140; }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    max-width: 560px; width: 100%; max-height: 86vh; overflow-y: auto;
+    box-shadow: var(--shadow-lg); padding: 26px;
+  }
+  .modal .fechar {
+    all: unset; cursor: pointer; float: right; width: 32px; height: 32px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; color: var(--text-3);
+  }
+  .modal .fechar:hover { background: var(--surface-3); color: var(--text); }
+  .modal h2 { font-size: 1.35rem; margin: 4px 0 6px; }
+  #popupNoticia .modal { border-top: 4px solid var(--accent-bg); }
+  .noticia-item {
+    display: flex; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px;
+  }
+  .noticia-item.nao-lida { border-color: var(--accent); background: var(--accent-soft); }
+  .noticia-item .badge-ico { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; background: var(--surface-3); color: var(--text-2); display:flex; align-items:center; justify-content:center; }
+  .noticia-item.nao-lida .badge-ico { background: var(--accent-bg); color: var(--accent-ink); }
+  .noticia-item h4 { margin: 0 0 3px; font-size: .95rem; }
+  .noticia-item p { margin: 0; font-size: .84rem; color: var(--text-2); }
+  .noticia-item .data { font-size: .72rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-top: 4px; display:block; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 10px;
+    font-weight: 700; font-size: .88rem; cursor: pointer; border: 1px solid transparent; transition: filter .15s ease, background .15s ease;
+  }
+  .btn-primary { background: var(--accent-bg); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-ghost { background: var(--surface-3); color: var(--text); border-color: var(--border); }
+  .btn-ghost:hover { background: var(--surface-2); }
+
+  footer {
+    flex-shrink: 0; border-top: 1px solid var(--border); padding: 20px 0 22px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    text-align: center; font-size: .82rem; color: var(--text-3);
+  }
+
+  .aviso-amostra {
+    background: var(--accent-soft); color: var(--text); border: 1px dashed var(--accent);
+    border-radius: 12px; padding: 10px 14px; font-size: .82rem; display: flex; align-items: center; gap: 8px; margin-bottom: 22px;
+  }
+
+  /* ---------- Referências gerais (home) ---------- */
+  #secaoReferencias { padding: 8px 0 56px; border-top: 1px solid var(--border); margin-top: 10px; }
+  #secaoReferencias h2 { font-size: 1.15rem; margin: 32px 0 14px; }
+  #gridReferencias { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .card-ref {
+    padding: 18px; cursor: pointer; display: flex; align-items: center; gap: 14px;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .card-ref:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
+  .card-ref .badge-ico-lg { background: var(--secundaria); color: var(--accent-ink); }
+  .card-ref h3 { font-size: 1rem; font-weight: 700; margin: 0 0 3px; }
+  .card-ref p { font-size: .82rem; color: var(--text-2); margin: 0; }
+
+  /* ---------- Filas de transferência (tabela) ---------- */
+  .filas-grupo { margin-bottom: 22px; }
+  .filas-grupo h4 {
+    display: inline-flex; align-items: center; gap: 7px; font-size: .82rem; font-weight: 800;
+    letter-spacing: .03em; text-transform: uppercase; padding: 6px 12px; border-radius: 8px;
+    margin: 0 0 10px; color: var(--accent-ink);
+  }
+  .filas-grupo.cor-a h4 { background: var(--accent-bg); }
+  .filas-grupo.cor-b h4 { background: var(--secundaria); }
+  .filas-grupo.cor-c h4 { background: var(--ok); color: #fff; }
+  .tabela-filas { width: 100%; border-collapse: collapse; overflow-x: auto; display: block; }
+  .tabela-filas thead th {
+    text-align: left; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-3); padding: 0 14px 8px; white-space: nowrap;
+  }
+  .tabela-filas tbody tr { background: var(--surface); }
+  .tabela-filas tbody td {
+    padding: 12px 14px; font-size: .86rem; border-top: 1px solid var(--border); vertical-align: middle;
+  }
+  .tabela-filas tbody tr:first-child td { border-top: 1px solid var(--border); }
+  .tabela-filas tbody tr td:first-child { border-left: 1px solid var(--border); font-weight: 700; border-radius: 10px 0 0 10px; }
+  .tabela-filas tbody tr td:last-child { border-right: 1px solid var(--border); border-radius: 0 10px 10px 0; }
+  .tabela-filas .mono-fila { font-family: 'JetBrains Mono', monospace; font-size: .78rem; color: var(--text-2); }
+  .tabela-filas-scroll { overflow-x: auto; border-radius: 12px; }
+
+  .dicas-filas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 10px; margin-top: 26px; }
+  .dica-box {
+    border: 1px dashed var(--border-strong); border-radius: 12px; padding: 12px 14px;
+    font-size: .82rem; color: var(--text-2); background: var(--surface-2);
+  }
+  .dica-box b { display: block; color: var(--text); font-size: .78rem; letter-spacing: .02em; margin-bottom: 3px; }
+
+  /* ---------- Códigos dos bancos ---------- */
+  .bancos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px,1fr)); gap: 10px; }
+  .banco-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font-size: .86rem;
+  }
+  .banco-row .cod {
+    font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: .82rem; padding: 4px 10px;
+    border-radius: 7px; background: var(--accent-soft); color: var(--accent); flex-shrink: 0;
+  }
+
+  /* ---------- Tela de login (09/09) ---------- */
+  /* appRoot com display:contents faz o header/main/footer continuarem como
+     filhos flex diretos do body (mantém o footer preso na base) enquanto
+     ele estiver visível; quando [hidden], a regra global de baixo já cuida
+     de escondê-lo por inteiro. */
+  #appRoot { display: contents; }
+  #paginaLogin, #paginaBloqueada {
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; background: var(--bg);
+  }
+  .login-card {
+    width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; box-shadow: var(--shadow-lg); padding: 32px 28px;
+  }
+  .login-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .login-brand .brand-logo { height: 74px; }
+  .login-brand h1 { font-size: 1.25rem; margin: 0; text-align: center; }
+  .login-brand-sub {
+    text-align: center; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); margin: -4px 0 0;
+  }
+  .login-sub { text-align: center; color: var(--text-2); font-size: .86rem; margin: 4px 0 24px; }
+  .login-label {
+    display: block; font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    color: var(--text-2); margin: 14px 0 6px;
+  }
+  .login-input {
+    width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text); font: inherit; font-size: .92rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .login-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .18); }
+  .login-senha-wrap { position: relative; }
+  .login-senha-wrap .login-input { padding-right: 42px; }
+  .login-olho {
+    all: unset; cursor: pointer; position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    color: var(--text-3); transition: background .15s ease, color .15s ease;
+  }
+  .login-olho:hover { background: var(--surface-3); color: var(--text); }
+  .login-erro {
+    margin-top: 14px; padding: 10px 12px; border-radius: 10px; font-size: .82rem; font-weight: 600;
+    background: var(--bad-soft); color: var(--bad); border: 1px solid rgba(var(--bad-rgb), .3);
+  }
+  .login-btn { width: 100%; justify-content: center; margin-top: 20px; padding: 12px 16px; font-size: .92rem; }
+  .login-btn:disabled { opacity: .7; cursor: not-allowed; filter: none; }
+
+  /* Spinner do botão "Entrar" — animação pós-clique (10/09). */
+  .login-spinner {
+    width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid rgba(var(--accent-rgb), .3); border-top-color: var(--accent-ink);
+    animation: girar .7s linear infinite; display: none;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .login-btn.carregando .login-spinner { display: inline-block; }
+
+  /* Crédito no rodapé (só pós-login) — bem discreto, cinza suave, com a
+     bola de basquete quicando antes do texto (10/09). */
+  .credito-footer { font-size: .76rem; color: var(--text-2); }
+  .credito-footer b { font-weight: 700; color: inherit; }
+  .basquete {
+    display: inline-block; font-size: 1rem; line-height: 1; vertical-align: -1px;
+    animation: quicar 1.1s infinite;
+  }
+  @keyframes quicar {
+    0%   { transform: translateY(-16px) rotate(0deg); animation-timing-function: cubic-bezier(.6,.04,.98,.34); }
+    46%  { transform: translateY(0) rotate(165deg) scale(1.14, .84); animation-timing-function: cubic-bezier(.02,.66,.4,.96); }
+    54%  { transform: translateY(-3px) rotate(180deg) scale(1, 1); }
+    100% { transform: translateY(-16px) rotate(360deg); }
+  }
+
+  /* ---------- Barra de pesquisa global (10/09) ---------- */
+  .icon-btn.busca-topo { width: auto; padding: 0 12px; gap: 7px; color: var(--text-3); font-size: .82rem; font-weight: 600; }
+  .icon-btn.busca-topo span { display: none; }
+  @media (min-width: 720px) { .icon-btn.busca-topo span { display: inline; } }
+  #overlayPesquisa {
+    position: fixed; inset: 0; z-index: 120; background: rgba(0,20,15,.5); backdrop-filter: blur(3px);
+    display: flex; align-items: flex-start; justify-content: center; padding: 64px 20px 20px;
+  }
+  #overlayPesquisa.hidden { display: none; }
+  .pesquisa-box {
+    width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column;
+    max-height: calc(100vh - 100px);
+  }
+  .pesquisa-input-wrap { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .pesquisa-input-wrap i { color: var(--text-3); flex-shrink: 0; }
+  #pesquisaInput {
+    all: unset; flex: 1; font-size: 1rem; color: var(--text); min-width: 0;
+  }
+  #pesquisaInput::placeholder { color: var(--text-3); }
+  .pesquisa-fechar {
+    all: unset; cursor: pointer; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-3); border: 1px solid var(--border); border-radius: 6px; padding: 3px 7px; flex-shrink: 0;
+  }
+  .pesquisa-fechar:hover { color: var(--text); border-color: var(--border-strong); }
+  /* Indicador de que a busca está restrita ao setor atual (14/09, pedido
+     do usuário: "a barra de pesquisa deve ter range de conteudo apenas
+     para conteudos que contidos" no setor aberto). */
+  .pesquisa-escopo {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: .78rem;
+    color: var(--text-2); background: var(--surface-2); border-bottom: 1px solid var(--border);
+  }
+  .pesquisa-escopo b { color: var(--accent); }
+  .pesquisa-escopo button {
+    all: unset; cursor: pointer; color: var(--accent); font-weight: 700; margin-left: auto; font-size: .78rem;
+  }
+  .pesquisa-escopo button:hover { text-decoration: underline; }
+  #pesquisaResultados { overflow-y: auto; padding: 8px; }
+  .resultado-item {
+    all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; width: 100%; box-sizing: border-box;
+    padding: 10px 12px; border-radius: 10px;
+  }
+  .resultado-item:hover, .resultado-item:focus { background: var(--surface-3); }
+  .resultado-titulo { font-size: .9rem; font-weight: 600; color: var(--text); }
+  .resultado-contexto {
+    font-size: .74rem; color: var(--accent); font-family: 'JetBrains Mono', monospace;
+  }
+  .pesquisa-vazio { padding: 24px 16px; text-align: center; color: var(--text-3); font-size: .86rem; margin: 0; }
+
+  /* ---------- Edição de conteúdo — só Admin (10/09) ---------- */
+  .admin-acoes { display: flex; gap: 4px; flex-shrink: 0; }
+  .admin-btn {
+    all: unset; cursor: pointer; width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; color: var(--text-3);
+    transition: background .15s ease, color .15s ease;
+  }
+  .admin-btn:hover { background: var(--surface-3); color: var(--text); }
+  .admin-btn-excluir:hover { background: var(--bad-soft); color: var(--bad); }
+  .admin-grip { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; color: var(--text-3); cursor: grab; flex-shrink: 0; }
+
+  /* Arrastar pra reordenar (só Admin, 14/09): o card inteiro vira
+     draggable; a alcinha (.admin-grip) é só pra deixar visualmente claro
+     que dá pra pegar ali, mas o cursor "grab" também aparece no card
+     todo. */
+  .admin-arrastavel { cursor: grab; transition: box-shadow .12s ease, opacity .12s ease; }
+  .admin-arrastavel.arrastando { opacity: .45; cursor: grabbing; }
+  .admin-arrastavel.drop-antes { box-shadow: inset 0 3px 0 0 var(--accent); }
+  .admin-arrastavel.drop-depois { box-shadow: inset 0 -3px 0 0 var(--accent); }
+
+  .modal-editar { max-width: 640px; }
+  .campo-edicao { margin-bottom: 14px; }
+  .campo-edicao label {
+    display: block; font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    color: var(--text-2); margin-bottom: 5px;
+  }
+  .campo-edicao input, .campo-edicao textarea {
+    width: 100%; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text); font: inherit; font-size: .88rem; box-sizing: border-box;
+  }
+  .campo-edicao textarea { min-height: 62px; resize: vertical; }
+  .campo-edicao input:focus, .campo-edicao textarea:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .18);
+  }
+  .item-edicao {
+    border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px;
+    position: relative; background: var(--surface-2);
+  }
+  .item-edicao .campo-edicao:last-child { margin-bottom: 0; }
+  .item-edicao .remover-item {
+    all: unset; cursor: pointer; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
+    border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-3);
+  }
+  .item-edicao .remover-item:hover { background: var(--bad-soft); color: var(--bad); }
+  .item-edicao-linha { display: flex; gap: 10px; align-items: flex-start; }
+  .item-edicao-linha .campo-edicao:last-child { max-width: 90px; flex-shrink: 0; margin-bottom: 0; }
+  .btn-add-item {
+    all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    font-size: .84rem; font-weight: 700; color: var(--accent); padding: 8px 2px;
+  }
+  .btn-add-item:hover { text-decoration: underline; }
+
+  /* Toast "desfazer exclusão" — canto inferior direito, 15s (pedido do
+     usuário: "apareceria um card aviso no canto inferior direito com a
+     opção desfazer que duraria 15 segundos"). */
+  .toast-desfazer {
+    position: fixed; right: 20px; bottom: 20px; z-index: 130; max-width: 360px;
+    display: flex; align-items: center; gap: 10px; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow-lg);
+    font-size: .86rem; animation: entradaToast .25s ease;
+  }
+  .toast-desfazer.hidden { display: none; }
+  .toast-desfazer span { flex: 1; }
+  .toast-desfazer button {
+    all: unset; cursor: pointer; font-weight: 700; color: var(--accent); padding: 4px 8px;
+    border-radius: 7px; flex-shrink: 0;
+  }
+  .toast-desfazer button:hover { background: var(--accent-soft); }
+  @keyframes entradaToast { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* Destaque temporário (3s) no item que veio da pesquisa, pra o usuário
+     achar onde caiu depois do redirecionamento (10/09). */
+  .destaque-busca {
+    animation: pulsoBusca 3s ease-out; border-radius: 10px; position: relative; z-index: 2;
+  }
+  @keyframes pulsoBusca {
+    0%   { box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .6); background-color: rgba(var(--accent-rgb), .14); }
+    70%  { box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .3); background-color: rgba(var(--accent-rgb), .08); }
+    100% { box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0); background-color: rgba(var(--accent-rgb), 0); }
+  }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ---------- Tela de login — sempre a primeira coisa exibida ---------- -->
+<div id="paginaLogin">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-logo brand-logo-cor" role="img" aria-label="Example Company"></span><span class="brand-logo brand-logo-branco" role="img" aria-label="Example Company"></span>
+      <h1>Portal da Qualidade</h1>
+      <p class="login-brand-sub">Central de processos</p>
+    </div>
+    <p class="login-sub">Entre com seu usuário e senha para continuar.</p>
+    <form id="formLogin" onsubmit="return tentarLogin(event)" autocomplete="off">
+      <label class="login-label" for="campoLogin">Usuário</label>
+      <input id="campoLogin" class="login-input" type="text" autocomplete="off" autocapitalize="off" maxlength="40" spellcheck="false" oninput="this.value = filtrarEmoji(this.value)" required>
+      <label class="login-label" for="campoSenha">Senha</label>
+      <div class="login-senha-wrap">
+        <input id="campoSenha" class="login-input" type="password" autocomplete="off" maxlength="100" spellcheck="false" oninput="this.value = filtrarEmoji(this.value)" required>
+        <button type="button" class="login-olho" id="btnOlho" onclick="alternarVisibilidadeSenha()" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
+          <i data-lucide="eye" style="width:16px;height:16px;"></i>
+        </button>
+      </div>
+      <div class="login-erro" id="loginErro" hidden></div>
+      <button type="submit" class="btn btn-primary login-btn" id="btnEntrar">
+        <span class="login-spinner" aria-hidden="true"></span>
+        <span id="btnEntrarTexto">Entrar</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ---------- Bloqueio de acesso fora do local próprio (celular/tablet) ---------- -->
+<div id="paginaBloqueada" hidden>
+  <div class="login-card" style="text-align:center;">
+    <div class="login-brand">
+      <span class="badge-ico" style="width:44px;height:44px;border-radius:12px;background:var(--bad-soft);color:var(--bad);">
+        <i data-lucide="shield-alert" style="width:22px;height:22px;"></i>
+      </span>
+      <h1>Acesso não permitido</h1>
+    </div>
+    <p class="login-sub" style="margin-bottom:0;">Esta aplicação não deve ser aberta fora do local próprio.</p>
+  </div>
+</div>
+
+<div id="appRoot" hidden>
+
+<header id="topbar">
+  <div class="wrap inner">
+    <div class="brand" onclick="irParaHome()">
+      <span class="brand-logo brand-logo-cor" role="img" aria-label="Example Company"></span><span class="brand-logo brand-logo-branco" role="img" aria-label="Example Company"></span>
+      <div class="brand-textos">
+        <span class="brand-titulo">Portal da Qualidade</span>
+        <span class="brand-sub">Central de processos</span>
+      </div>
+    </div>
+    <nav id="categoriaNav"></nav>
+    <div style="margin-left:auto; display:flex; gap:8px; flex-shrink:0;">
+      <button class="icon-btn busca-topo" onclick="abrirPesquisa()" title="Pesquisar (qualquer palavra do site)">
+        <i data-lucide="search" style="width:16px;height:16px;"></i><span>Pesquisar</span>
+      </button>
+      <button class="icon-btn" id="btnNoticias" onclick="abrirPainelNoticias()" title="Novidades">
+        <i data-lucide="bell" style="width:17px;height:17px;"></i>
+        <span class="dot" id="pontoNoticias" hidden></span>
+      </button>
+      <button class="icon-btn" onclick="alternarTema()" title="Alternar tema">
+        <i data-lucide="sun-moon" style="width:17px;height:17px;"></i>
+      </button>
+      <button class="icon-btn" id="btnSair" onclick="sair()" title="Sair">
+        <i data-lucide="log-out" style="width:17px;height:17px;"></i>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ---------- Home: grade de setores ---------- -->
+  <div id="paginaHome">
+    <section class="hero">
+      <span class="kicker"><i data-lucide="sparkles" style="width:12px;height:12px;"></i> Central de processos</span>
+      <h1>Os meios certos de atender, num só lugar.</h1>
+      <p>Escolha um setor pra ver o checklist de qualidade e o script de atendimento correspondentes. Quando algo muda, você é avisado por aqui antes de precisar perguntar.</p>
+    </section>
+    <div id="gridSetores"></div>
+
+    <!-- ---------- Referências gerais: conteúdo transversal, não é de um setor só ---------- -->
+    <section id="secaoReferencias">
+      <h2>Referências gerais</h2>
+      <div id="gridReferencias"></div>
+    </section>
+  </div>
+
+  <!-- ---------- Página de um setor ---------- -->
+  <div id="paginaSetor" hidden>
+    <button class="voltar" onclick="irParaHome()"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Todos os setores</button>
+    <div class="setor-head">
+      <span class="badge-ico-lg" id="setorIcone"></span>
+      <h1 id="setorTitulo">—</h1>
+    </div>
+    <div class="tabs-doc" id="tabsDoc"></div>
+    <div id="classificacoesBox"></div>
+    <div id="conteudoDoc"></div>
+  </div>
+
+  <!-- ---------- Página de uma referência geral (Filas de transferência, Códigos dos bancos) ---------- -->
+  <div id="paginaReferencia" hidden>
+    <button class="voltar" onclick="irParaHome()"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Todos os setores</button>
+    <div class="setor-head">
+      <span class="badge-ico-lg" id="refIcone"></span>
+      <h1 id="refTitulo">—</h1>
+    </div>
+    <div id="refDescricao" style="color:var(--text-2); font-size:.92rem; margin:-10px 0 22px; max-width:680px;"></div>
+    <div id="conteudoReferencia"></div>
+  </div>
+</main>
+
+<footer>
+  <span>© 2026 Portal da Qualidade.</span>
+  <span class="credito-footer"><span class="basquete" aria-hidden="true">🏀</span> Desenvolvido por <b>Lucas Soares</b></span>
+</footer>
+
+<!-- ---------- Popup de novidade ---------- -->
+<div class="overlay hidden" id="popupNoticia" onclick="if(event.target===this) fecharPopupNoticia()">
+  <div class="modal">
+    <button class="fechar" onclick="fecharPopupNoticia()"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+    <span class="chip acento"><i data-lucide="megaphone" style="width:11px;height:11px;"></i> Novidade</span>
+    <h2 id="nTitulo" style="margin-top:10px;">—</h2>
+    <p style="color:var(--text-2);font-size:.94rem;" id="nCorpo">—</p>
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button class="btn btn-primary" id="nVerSetor" onclick="irParaSetorDaNoticia()" hidden>
+        Ver setor <i data-lucide="arrow-right" style="width:14px;height:14px;"></i>
+      </button>
+      <button class="btn btn-ghost" onclick="fecharPopupNoticia()">Entendi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------- Painel com todas as novidades ---------- -->
+<div class="overlay hidden" id="painelNoticias" onclick="if(event.target===this) fecharPainelNoticias()">
+  <div class="modal">
+    <button class="fechar" onclick="fecharPainelNoticias()"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+    <h2 style="margin-top:4px;">Novidades</h2>
+    <p style="color:var(--text-2);font-size:.88rem;margin-top:-6px;">Mudanças de processo e avisos da equipe.</p>
+    <div id="listaNoticias" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<!-- ---------- Pesquisa global ---------- -->
+<div id="overlayPesquisa" class="hidden" onclick="if(event.target===this) fecharPesquisa()">
+  <div class="pesquisa-box">
+    <div class="pesquisa-input-wrap">
+      <i data-lucide="search" style="width:18px;height:18px;"></i>
+      <input id="pesquisaInput" type="text" autocomplete="off" spellcheck="false" placeholder="Pesquisar qualquer palavra do site…" oninput="executarPesquisa()">
+      <button class="pesquisa-fechar" onclick="fecharPesquisa()">Esc</button>
+    </div>
+    <div class="pesquisa-escopo" id="pesquisaEscopoBox" hidden>
+      <span>Pesquisando em <b id="pesquisaEscopoNome"></b></span>
+      <button type="button" onclick="alternarEscopoPesquisa()">Buscar em todos os setores</button>
+    </div>
+    <div id="pesquisaResultados"></div>
+  </div>
+</div>
+
+<!-- ---------- Confirmação genérica (editar/excluir card) ---------- -->
+<div class="overlay hidden" id="overlayConfirmar" onclick="if(event.target===this) fecharConfirmar()">
+  <div class="modal" style="max-width:420px;">
+    <p id="confirmarMensagem" style="font-size:.95rem; margin:4px 0 0;">—</p>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-primary" onclick="executarConfirmacao()">Confirmar</button>
+      <button class="btn btn-ghost" onclick="fecharConfirmar()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------- Edição de card (só Admin) ---------- -->
+<div class="overlay hidden" id="overlayEditar" onclick="if(event.target===this) fecharEdicao()">
+  <div class="modal modal-editar">
+    <button class="fechar" onclick="fecharEdicao()"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+    <span class="chip acento"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Editando</span>
+    <h2 id="editarTituloModal" style="margin-top:10px;">Editar card</h2>
+    <div id="editarCorpo"></div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-primary" onclick="salvarEdicaoCard()">Salvar alterações</button>
+      <button class="btn btn-ghost" onclick="fecharEdicao()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------- Toast de "desfazer exclusão" (15s) ---------- -->
+<div id="toastDesfazer" class="toast-desfazer hidden">
+  <i data-lucide="trash-2" style="width:15px;height:15px;flex-shrink:0;"></i>
+  <span id="toastDesfazerTexto">Card removido.</span>
+  <button onclick="desfazerExclusao()">Desfazer</button>
+</div>
+
+</div><!-- /#appRoot -->
+
+<script>
+/* =========================================================================
+   0. Login / sessão (09/09)
+
+   As patentes (Admin/Auditor/Operador) existem só pro banco de dados e pro
+   token de sessão — de propósito, NUNCA aparecem em texto na tela (pedido
+   do usuário: "elas não devem aparecer no site"). Por enquanto, qualquer
+   patente vê os mesmos setores; PATENTE_SETORES_VISIVEIS fica pronta pra
+   quando o usuário definir qual patente enxerga o quê — até lá, '*' libera
+   tudo pra todo mundo que conseguir logar.
+   ========================================================================= */
+var SESSAO_TOKEN_KEY = 'portalqualidade_sessao_token';
+var DEVICE_TOKEN_KEY = 'portalqualidade_device_token';
+var MENSAGEM_ERRO_LOGIN_PADRAO = 'Login ou Senha incorreto. Tente novamente.';
+var sessaoAtual = null; // { patente }
+var PATENTE_SETORES_VISIVEIS = { Admin: '*', Auditor: '*', Operador: '*' };
+
+function obterDeviceToken() {
+  try {
+    var t = localStorage.getItem(DEVICE_TOKEN_KEY);
+    if (t) return t;
+    t = (window.crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : gerarIdAleatorio_();
+    localStorage.setItem(DEVICE_TOKEN_KEY, t);
+    return t;
+  } catch (e) {
+    return gerarIdAleatorio_();
+  }
+}
+function gerarIdAleatorio_() {
+  var s = '';
+  for (var i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16);
+  return s;
+}
+
+/* Emojis e símbolos pictográficos comuns — filtrados ao digitar nos campos
+   de login e senha (pedido do usuário: "anti emojis"). Mesma faixa usada
+   no Codigo.gs, como segunda camada (defesa em profundidade). */
+var REGEX_EMOJI_CLIENTE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu;
+function filtrarEmoji(valor) { return String(valor == null ? '' : valor).replace(REGEX_EMOJI_CLIENTE, ''); }
+
+/* A senha fica mascarada por padrão — o único jeito de vê-la é clicando no
+   ícone do olho. Pedido do usuário (09/09): a visualização deve durar
+   só 5 segundos e depois voltar a ocultar sozinha — pra ver de novo, tem
+   que clicar no olho outra vez (não é mais um alterna-e-fica). Clicar de
+   novo enquanto já está visível esconde na hora, sem esperar os 5s. */
+var senhaVisivelTimer = null;
+function pararTimerSenhaVisivel_() {
+  if (senhaVisivelTimer) { clearTimeout(senhaVisivelTimer); senhaVisivelTimer = null; }
+}
+function ocultarSenhaAgora_() {
+  pararTimerSenhaVisivel_();
+  document.getElementById('campoSenha').type = 'password';
+  document.getElementById('btnOlho').innerHTML = iconeSvg('eye', 16);
+  renderIcons();
+}
+function alternarVisibilidadeSenha() {
+  var campo = document.getElementById('campoSenha');
+  if (campo.type === 'password') {
+    campo.type = 'text';
+    document.getElementById('btnOlho').innerHTML = iconeSvg('eye-off', 16);
+    renderIcons();
+    pararTimerSenhaVisivel_();
+    senhaVisivelTimer = setTimeout(ocultarSenhaAgora_, 5000);
+  } else {
+    ocultarSenhaAgora_();
+  }
+}
+
+function mostrarErroLogin(msg) {
+  var el = document.getElementById('loginErro');
+  el.textContent = msg;
+  el.hidden = false;
+}
+function limparErroLogin() {
+  var el = document.getElementById('loginErro');
+  el.hidden = true;
+  el.textContent = '';
+}
+
+var loginBloqueadoTimer = null;
+function pararContagemBloqueio() {
+  if (loginBloqueadoTimer) { clearInterval(loginBloqueadoTimer); loginBloqueadoTimer = null; }
+}
+function iniciarContagemBloqueio(bloqueadoAteMs) {
+  var btn = document.getElementById('btnEntrar');
+  var texto = document.getElementById('btnEntrarTexto');
+  btn.disabled = true;
+  pararContagemBloqueio();
+  function atualizar() {
+    var restanteMs = bloqueadoAteMs - Date.now();
+    if (restanteMs <= 0) {
+      pararContagemBloqueio();
+      btn.disabled = false;
+      texto.textContent = 'Entrar';
+      limparErroLogin();
+      return;
+    }
+    var totalSeg = Math.ceil(restanteMs / 1000);
+    var h = Math.floor(totalSeg / 3600);
+    var m = Math.floor((totalSeg % 3600) / 60);
+    var s = totalSeg % 60;
+    var partes = [];
+    if (h) partes.push(h + 'h');
+    if (h || m) partes.push(m + 'm');
+    partes.push(s + 's');
+    texto.textContent = 'Aguarde ' + partes.join(' ');
+  }
+  atualizar();
+  loginBloqueadoTimer = setInterval(atualizar, 1000);
+}
+
+function tentarLogin(ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  limparErroLogin();
+  var login = filtrarEmoji(document.getElementById('campoLogin').value).trim();
+  var senha = filtrarEmoji(document.getElementById('campoSenha').value);
+
+  // Limpa o campo de senha assim que o valor é lido — ela não fica mais
+  // parada em texto no DOM enquanto a resposta do servidor não chega
+  // (reduz o que fica exposto na aba Elements do DevTools).
+  ocultarSenhaAgora_();
+  document.getElementById('campoSenha').value = '';
+
+  if (!login || !senha) { mostrarErroLogin(MENSAGEM_ERRO_LOGIN_PADRAO); return false; }
+
+  var btn = document.getElementById('btnEntrar');
+  btn.disabled = true;
+  btn.classList.add('carregando');
+  document.getElementById('btnEntrarTexto').textContent = 'Entrando…';
+
+  if (!window.google || !window.google.script || !window.google.script.run) {
+    // Só acontece fora do ambiente do Apps Script (ex.: teste local do arquivo).
+    btn.disabled = false;
+    btn.classList.remove('carregando');
+    document.getElementById('btnEntrarTexto').textContent = 'Entrar';
+    mostrarErroLogin('Login só funciona publicado no Apps Script.');
+    return false;
+  }
+
+  var deviceToken = obterDeviceToken();
+  google.script.run
+    .withSuccessHandler(function (res) {
+      processarRespostaLogin(res);
+      // Log de acesso em segundo plano — não faz o login esperar por ele
+      // (pedido do usuário, 09/09: "preciso que isso seja feito pós login").
+      if (window.google && google.script && google.script.run) {
+        google.script.run.registrarAcessoAsync(login, (res && res.patente) || '', !!(res && res.ok), deviceToken);
+      }
+    })
+    .withFailureHandler(function () {
+      btn.disabled = false;
+      btn.classList.remove('carregando');
+      document.getElementById('btnEntrarTexto').textContent = 'Entrar';
+      mostrarErroLogin('Não foi possível conectar. Tente novamente.');
+    })
+    .verificarLogin(login, senha, deviceToken);
+  return false;
+}
+
+function processarRespostaLogin(res) {
+  var btn = document.getElementById('btnEntrar');
+  if (res && res.ok) {
+    try { localStorage.setItem(SESSAO_TOKEN_KEY, res.token); } catch (e) {}
+    sessaoAtual = { patente: res.patente };
+    entrarNoPortal();
+    return;
+  }
+  btn.disabled = false;
+  btn.classList.remove('carregando');
+  document.getElementById('btnEntrarTexto').textContent = 'Entrar';
+  mostrarErroLogin((res && res.mensagem) || MENSAGEM_ERRO_LOGIN_PADRAO);
+  if (res && res.bloqueado && res.bloqueadoAte) iniciarContagemBloqueio(res.bloqueadoAte);
+}
+
+function entrarNoPortal() {
+  pararContagemBloqueio();
+  document.getElementById('paginaLogin').hidden = true;
+  document.getElementById('appRoot').hidden = false;
+  renderIcons();
+  carregarConteudoEditado_(function () {
+    montarIndicePesquisa(); // recalcula com o conteúdo já editado/excluído
+    rerenderizarDocAtual_();
+    setTimeout(verificarNoticiaNaoVista, 500);
+  });
+}
+
+/* Sair não recarrega a página inteira (o carregamento inicial do Apps
+   Script é lento) — só esconde o app e volta pra tela de login na hora,
+   já resetando o formulário e a navegação interna. Pedido do usuário
+   (09/09): "após o clique o usuario deve ser redirecionado para a tela
+   de login". */
+function sair() {
+  try { localStorage.removeItem(SESSAO_TOKEN_KEY); } catch (e) {}
+  sessaoAtual = null;
+  pararContagemBloqueio();
+  ocultarSenhaAgora_();
+
+  document.getElementById('appRoot').hidden = true;
+  setorAtual = null;
+  docAtual = null;
+  document.getElementById('paginaHome').hidden = false;
+  document.getElementById('paginaSetor').hidden = true;
+  document.getElementById('paginaReferencia').hidden = true;
+
+  var form = document.getElementById('formLogin');
+  if (form && form.reset) form.reset();
+  limparErroLogin();
+  fecharPesquisa();
+  var btn = document.getElementById('btnEntrar');
+  btn.disabled = false;
+  btn.classList.remove('carregando');
+  document.getElementById('btnEntrarTexto').textContent = 'Entrar';
+
+  document.getElementById('paginaLogin').hidden = false;
+  renderIcons();
+}
+
+function verificarSessaoSalva() {
+  var token;
+  try { token = localStorage.getItem(SESSAO_TOKEN_KEY); } catch (e) { token = null; }
+  if (!token || !window.google || !window.google.script || !window.google.script.run) { renderIcons(); return; }
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (res && res.ok) {
+        sessaoAtual = { patente: res.patente };
+        entrarNoPortal();
+      } else {
+        try { localStorage.removeItem(SESSAO_TOKEN_KEY); } catch (e) {}
+        renderIcons();
+      }
+    })
+    .withFailureHandler(function () { renderIcons(); })
+    .validarTokenSessao(token);
+}
+
+/* =========================================================================
+   1. Tema
+   ========================================================================= */
+var THEME_KEY = 'portalqualidade_theme';
+function applyTheme(force) {
+  var salvo = force || localStorage.getItem(THEME_KEY);
+  if (!salvo) salvo = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', salvo);
+}
+function alternarTema() {
+  var novo = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', novo);
+  localStorage.setItem(THEME_KEY, novo);
+}
+applyTheme();
+
+/* =========================================================================
+   2. Conteúdo de demonstração
+
+   Todo o conteúdo abaixo é fictício e genérico, escrito para esta versão
+   pública. Ele só existe para exercitar a interface (pesquisa, edição por
+   Admin, ordenação, desfazer, novidades). Em uma instalação real, esta seção
+   é substituída pelo material da própria equipe.
+
+   Formato de cada estrutura:
+   - SETORES: { id, nome, icone } (ícones da biblioteca Lucide)
+   - CHECKLISTS: critérios pontuados. `c` é a pergunta de auditoria e `p` os
+     pontos perdidos se a falha ocorrer. `graves` zeram a nota.
+   - SCRIPTS: roteiro de atendimento em blocos, cada bloco com itens
+     { rotulo, texto }. Rótulos que começam com "/" são tratados como comandos.
+   - REFERENCIAS: material de apoio; `setor` pode ser texto ou lista.
+   ========================================================================= */
+var SETORES = [
+  { id: 'vendas',      nome: 'Vendas',      icone: 'briefcase' },
+  { id: 'suporte',     nome: 'Suporte',     icone: 'life-buoy' },
+  { id: 'cobranca',    nome: 'Cobrança',    icone: 'receipt' },
+  { id: 'seguros',     nome: 'Seguros',     icone: 'shield' },
+  { id: 'atendimento', nome: 'Atendimento', icone: 'headset' },
+  { id: 'retencao',    nome: 'Retenção',    icone: 'heart-handshake' }
+];
+
+/* Escala igual em todo checklist. */
+var CLASSIFICACOES_PADRAO = [
+  { rotulo: 'Excelente', faixa: 'Média 95,00 a 100', classe: 'classe-excelente' },
+  { rotulo: 'Bom', faixa: 'Média 80,00 a 94,99', classe: 'classe-bom' },
+  { rotulo: 'Não atende às expectativas', faixa: 'Média 0,00 a 79,99', classe: 'classe-ruim' }
+];
+
+var CHECKLISTS = [
+  // ---------------- Vendas ----------------
+  { setor: 'vendas', variante: 'Checklist Venda - Ligação', grupos: [
+    { categoria: 'Saudação inicial', itens: [
+      { c: 'Apresentou-se com nome e empresa (Example Company) de forma cordial.', p: 5 },
+      { c: 'Atendeu a ligação em até 5 segundos.', p: 5 },
+      { c: 'Evitou gírias e expressões muito informais.', p: 3 }
+    ]},
+    { categoria: 'Condução do atendimento', itens: [
+      { c: 'Confirmou os dados cadastrais do cliente antes de apresentar valores.', p: 10 },
+      { c: 'Apresentou valor da parcela, quantidade de parcelas e valor total de forma clara.', p: 10 },
+      { c: 'Fez ao menos uma pergunta de sondagem para entender a necessidade do cliente.', p: 8 }
+    ]},
+    { categoria: 'Registro', itens: [
+      { c: 'Registrou o atendimento no sistema com o motivo correto.', p: 10 }
+    ]},
+    { categoria: 'Finalização', itens: [
+      { c: 'Recapitulou o combinado e perguntou se havia dúvidas.', p: 4 },
+      { c: 'Encerrou com agradecimento e despedida cordiais.', p: 3 }
+    ]}
+  ], graves: [
+    'Omitiu informação relevante ao cliente, como taxas, prazos ou valores.',
+    'Utilizou tom de voz rude, impaciente ou desinteressado.',
+    'Abandonou a ligação sem encerrar o atendimento.',
+    'Transferiu o cliente indevidamente.'
+  ]},
+  { setor: 'vendas', variante: 'Checklist Venda - Chat', grupos: [
+    { categoria: 'Abertura', itens: [
+      { c: 'Respondeu a primeira mensagem em até 60 segundos.', p: 5 },
+      { c: 'Usou a saudação padrão e se identificou.', p: 5 }
+    ]},
+    { categoria: 'Condução', itens: [
+      { c: 'Evitou mensagens longas demais e dividiu a explicação em partes.', p: 6 },
+      { c: 'Confirmou o entendimento do cliente antes de seguir.', p: 8 },
+      { c: 'Revisou a ortografia antes de enviar.', p: 4 }
+    ]},
+    { categoria: 'Finalização', itens: [
+      { c: 'Enviou o resumo do atendimento e perguntou se havia dúvidas.', p: 6 }
+    ]}
+  ], graves: [
+    'Compartilhou dado pessoal de um cliente com outra pessoa.',
+    'Tratou o cliente de forma depreciativa.'
+  ]},
+  // ---------------- Suporte ----------------
+  { setor: 'suporte', variante: 'Checklist Suporte - Ligação', grupos: [
+    { categoria: 'Identificação do problema', itens: [
+      { c: 'Pediu uma descrição objetiva do problema antes de propor solução.', p: 10 },
+      { c: 'Consultou o histórico do cliente no sistema.', p: 8 }
+    ]},
+    { categoria: 'Solução', itens: [
+      { c: 'Explicou o passo a passo em linguagem simples.', p: 10 },
+      { c: 'Confirmou com o cliente que o problema foi resolvido.', p: 10 },
+      { c: 'Abriu chamado quando a solução não foi possível na hora.', p: 8 }
+    ]},
+    { categoria: 'Finalização', itens: [
+      { c: 'Informou o número do protocolo e o prazo de retorno.', p: 6 }
+    ]}
+  ], graves: [
+    'Informou um prazo que sabia não poder cumprir.',
+    'Encerrou o contato sem resolver nem registrar o chamado.'
+  ]},
+  // ---------------- Cobrança ----------------
+  { setor: 'cobranca', variante: 'Checklist Cobrança - Ligação', grupos: [
+    { categoria: 'Abordagem', itens: [
+      { c: 'Confirmou que falava com o titular antes de citar qualquer dado do contrato.', p: 15 },
+      { c: 'Informou que a ligação é gravada.', p: 5 }
+    ]},
+    { categoria: 'Negociação', itens: [
+      { c: 'Apresentou apenas as condições disponíveis no sistema.', p: 15 },
+      { c: 'Ouviu a situação do cliente sem interromper.', p: 8 },
+      { c: 'Registrou o acordo com data e valor.', p: 10 }
+    ]}
+  ], graves: [
+    'Fez ameaça ou constrangimento ao cliente.',
+    'Citou dados do contrato a uma pessoa que não é o titular.'
+  ]},
+  // ---------------- Seguros ----------------
+  { setor: 'seguros', variante: 'Checklist Seguros - Ligação', grupos: [
+    { categoria: 'Oferta', itens: [
+      { c: 'Explicou a cobertura e o valor do seguro antes de pedir a adesão.', p: 12 },
+      { c: 'Informou que o seguro é opcional quando aplicável.', p: 12 }
+    ]},
+    { categoria: 'Registro', itens: [
+      { c: 'Registrou a decisão do cliente (aceitou ou recusou).', p: 8 }
+    ]}
+  ], graves: [
+    'Incluiu o seguro sem o consentimento do cliente.'
+  ]},
+  // ---------------- Atendimento ----------------
+  { setor: 'atendimento', variante: 'Checklist Atendimento - Receptivo', grupos: [
+    { categoria: 'Abertura', itens: [
+      { c: 'Saudou o cliente e perguntou como poderia ajudar.', p: 5 },
+      { c: 'Confirmou os dados de identificação.', p: 10 }
+    ]},
+    { categoria: 'Condução', itens: [
+      { c: 'Identificou corretamente a necessidade do cliente.', p: 12 },
+      { c: 'Usou a fila de transferência correta quando precisou encaminhar.', p: 10 },
+      { c: 'Evitou deixar o cliente em silêncio sem avisar.', p: 6 }
+    ]}
+  ], graves: [
+    'Transferiu o cliente sem explicar o motivo.'
+  ]},
+  // ---------------- Retenção ----------------
+  { setor: 'retencao', variante: 'Checklist Retenção - Ligação', grupos: [
+    { categoria: 'Escuta', itens: [
+      { c: 'Perguntou o motivo do pedido de cancelamento.', p: 12 },
+      { c: 'Demonstrou empatia com a situação do cliente.', p: 8 }
+    ]},
+    { categoria: 'Proposta', itens: [
+      { c: 'Apresentou uma alternativa adequada ao motivo informado.', p: 12 },
+      { c: 'Respeitou a decisão final do cliente.', p: 10 }
+    ]}
+  ], graves: [
+    'Insistiu depois de o cliente recusar de forma clara duas vezes.'
+  ]}
+];
+
+var SCRIPTS = [
+  { setor: 'vendas', titulo: 'Roteiro - Venda por Ligação', blocos: [
+    { titulo: 'Saudação', subtitulo: 'Iniciar em até 5 segundos após atender.', itens: [
+      { rotulo: 'Atendente', texto: '"Olá, bom dia! Meu nome é [seu nome], falo da Example Company. Com quem eu falo?"' },
+      { rotulo: 'Observação', texto: 'Use o nome do cliente ao longo da conversa.' }
+    ]},
+    { titulo: 'Sondagem', itens: [
+      { rotulo: 'Atendente', texto: '"Para eu indicar a melhor opção, o que você pretende fazer com o valor?"' },
+      { rotulo: 'Cliente', texto: '"Quero organizar algumas contas."' }
+    ]},
+    { titulo: 'Apresentação da proposta', itens: [
+      { rotulo: 'Atendente', texto: '"A parcela ficaria em R$ [valor], em [quantidade] vezes, com valor total de R$ [total]."' },
+      { rotulo: 'Importante', texto: 'Apresente sempre valor da parcela, prazo e valor total, nessa ordem.' }
+    ]},
+    { titulo: 'Encerramento', itens: [
+      { rotulo: 'Atendente', texto: '"Ficou alguma dúvida? A Example Company agradece o contato, tenha um ótimo dia!"' }
+    ]}
+  ]},
+  { setor: 'suporte', titulo: 'Guia rápido - Suporte', blocos: [
+    { titulo: 'Termos frequentes', itens: [
+      { rotulo: 'Protocolo', texto: 'Número que identifica o atendimento e deve ser informado ao cliente no final.' },
+      { rotulo: 'Chamado', texto: 'Registro aberto quando o problema não pode ser resolvido na hora.' },
+      { rotulo: 'Reabertura', texto: 'Quando o cliente volta a contatar sobre um chamado já encerrado.' }
+    ]},
+    { titulo: 'Quando abrir um chamado', itens: [
+      { rotulo: 'Passo 1', texto: 'Tente resolver durante o contato com a base de conhecimento.' },
+      { rotulo: 'Passo 2', texto: 'Se não for possível, abra o chamado com descrição objetiva e prazo.' }
+    ]}
+  ]},
+  { setor: 'cobranca', titulo: 'Roteiro - Cobrança Ativa', blocos: [
+    { titulo: 'Confirmação do titular', itens: [
+      { rotulo: 'Atendente', texto: '"Bom dia! Falo com o Sr. Cliente Exemplo 002?"' },
+      { rotulo: 'Observação', texto: 'Se outra pessoa atender, não forneça dados do contrato.' }
+    ]},
+    { titulo: 'Motivo do contato', itens: [
+      { rotulo: 'Atendente', texto: '"Estou ligando sobre uma parcela em aberto do seu contrato. Podemos conversar agora?"' }
+    ]},
+    { titulo: 'Negociação', itens: [
+      { rotulo: 'Atendente', texto: '"O valor atualizado é de R$ [valor]. Posso enviar o boleto para o seu celular?"' },
+      { rotulo: 'Importante', texto: 'Informe somente as condições disponíveis no sistema, sem prometer reduções.' }
+    ]}
+  ]},
+  { setor: 'seguros', titulo: 'Roteiro - Oferta de Seguro', blocos: [
+    { titulo: 'Apresentação', itens: [
+      { rotulo: 'Atendente', texto: '"Além da proposta, existe um seguro opcional que cobre imprevistos. Posso explicar rapidamente?"' }
+    ]},
+    { titulo: 'Decisão do cliente', itens: [
+      { rotulo: 'Se aceitar', texto: 'Confirme o valor mensal e registre a adesão.' },
+      { rotulo: 'Se recusar', texto: 'Agradeça, registre a recusa e siga com o atendimento.' }
+    ]}
+  ]},
+  { setor: 'atendimento', titulo: 'Roteiro - Atendimento Receptivo', blocos: [
+    { titulo: 'Abertura', itens: [
+      { rotulo: 'Atendente', texto: '"Example Company, bom dia! Como posso ajudar?"' }
+    ]},
+    { titulo: 'Comandos do chat', subtitulo: 'Atalhos de exemplo para respostas padronizadas.', itens: [
+      { rotulo: '/saudacao', texto: 'Mensagem padrão de abertura do chat.' },
+      { rotulo: '/aguarde', texto: 'Avisa que você está consultando as informações.' },
+      { rotulo: '/encerrar', texto: 'Mensagem padrão de encerramento com pesquisa de satisfação.' }
+    ]}
+  ]},
+  { setor: 'retencao', titulo: 'Roteiro - Retenção', blocos: [
+    { titulo: 'Escuta', itens: [
+      { rotulo: 'Atendente', texto: '"Entendo. Pode me contar o que levou à decisão de cancelar?"' }
+    ]},
+    { titulo: 'Alternativas', itens: [
+      { rotulo: 'Atendente', texto: '"Com base no que você me contou, posso sugerir uma alternativa. Posso explicar?"' },
+      { rotulo: 'Importante', texto: 'Se o cliente recusar com clareza, respeite a decisão e conclua o pedido.' }
+    ]}
+  ]}
+];
+
+var REFERENCIAS = [
+  { setor: 'vendas', titulo: 'Argumentações - Objeções comuns', blocos: [
+    { titulo: 'Cliente diz que foi só uma simulação', itens: [
+      { rotulo: 'Resposta sugerida', texto: 'Claro, entendo. Posso mostrar em um minuto como ficaria, sem compromisso, para você comparar com calma.' }
+    ]},
+    { titulo: 'Cliente acha o valor alto', itens: [
+      { rotulo: 'Sondagem', texto: 'Você chegou a comparar com outras opções?' },
+      { rotulo: 'Sugestão', texto: 'Posso simular outro prazo para a parcela ficar mais confortável.' }
+    ]}
+  ]},
+  { setor: ['vendas', 'retencao'], titulo: 'Política de cancelamento (exemplo)', blocos: [
+    { titulo: 'Quando o cancelamento é permitido', itens: [
+      { rotulo: 'Regra', texto: 'O cliente pode solicitar o cancelamento dentro do prazo previsto no contrato.' },
+      { rotulo: 'Atenção', texto: 'Registre o motivo informado pelo cliente em todos os casos.' }
+    ]}
+  ]},
+  { setor: 'suporte', titulo: 'Motivos de cancelamento documentados', blocos: [
+    { titulo: 'Validação de identidade', itens: [
+      { rotulo: 'Descrição', texto: 'A validação de identidade não foi concluída dentro do prazo.' },
+      { rotulo: 'O que orientar', texto: 'Explique que o cliente pode iniciar uma nova proposta.' }
+    ]},
+    { titulo: 'Divergência de documento', itens: [
+      { rotulo: 'Descrição', texto: 'Os dados do documento não conferem com o cadastro.' },
+      { rotulo: 'O que orientar', texto: 'Peça uma foto legível e nítida do documento.' }
+    ]}
+  ]},
+  { setor: 'cobranca', titulo: 'Comandos de cobrança (exemplo)', blocos: [
+    { titulo: 'Atalhos', itens: [
+      { rotulo: '/boleto', texto: 'Envia o boleto atualizado ao cliente.' },
+      { rotulo: '/acordo', texto: 'Abre o registro de acordo com data e valor.' }
+    ]}
+  ]},
+  { setor: 'atendimento', titulo: 'Glossário rápido', blocos: [
+    { titulo: 'Siglas de exemplo', itens: [
+      { rotulo: 'TMA', texto: 'Tempo médio de atendimento.' },
+      { rotulo: 'URA', texto: 'Unidade de resposta audível, o atendimento automático inicial.' }
+    ]}
+  ]}
+];
+
+/* FILAS_TRANSFERENCIA: tabela de qual fila usar (voz/chat) por setor de
+   destino. Os nomes de fila abaixo são fictícios. */
+var FILAS_TRANSFERENCIA = [
+  { grupo: 'Produto A', cor: 'cor-a', itens: [
+    { setor: 'Atendimento A', voz: 'FILA-A-ATEND-VOZ', chat: 'FILA-A-ATEND-CHAT' },
+    { setor: 'Vendas A', voz: 'FILA-A-VENDAS-VOZ', chat: 'FILA-A-VENDAS-CHAT' },
+    { setor: 'Cobrança A', voz: 'FILA-A-COBR-VOZ', chat: 'FILA-A-COBR-CHAT' }
+  ]},
+  { grupo: 'Produto B', cor: 'cor-b', itens: [
+    { setor: 'Atendimento B', voz: 'FILA-B-ATEND-VOZ', chat: 'FILA-B-ATEND-CHAT' },
+    { setor: 'Retenção B', voz: 'FILA-B-RET-VOZ', chat: '-' }
+  ]},
+  { grupo: 'Produto C', cor: 'cor-c', itens: [
+    { setor: 'Atendimento C', voz: 'FILA-C-ATEND-VOZ', chat: 'FILA-C-ATEND-CHAT' },
+    { setor: 'Seguros C', voz: 'FILA-C-SEG-VOZ', chat: 'FILA-C-SEG-CHAT' }
+  ]}
+];
+var DICAS_FILAS = [
+  { titulo: 'Dica importante', texto: 'Use sempre a fila correta para o tipo de atendimento. Isso evita retrabalho e transferências erradas.' },
+  { titulo: 'Dúvidas?', texto: 'Consulte sua liderança.' }
+];
+
+/* CODIGOS_BANCOS: referência geral com bancos e códigos FICTÍCIOS. */
+var CODIGOS_BANCOS = [
+  { nome: 'Banco Exemplo A S.A.', codigo: '901' },
+  { nome: 'Banco Exemplo B S.A.', codigo: '902' },
+  { nome: 'Cooperativa Exemplo C', codigo: '903' },
+  { nome: 'Banco Exemplo D S.A.', codigo: '904' },
+  { nome: 'Banco Exemplo E S.A.', codigo: '905' },
+  { nome: 'Cooperativa Exemplo F', codigo: '906' }
+];
+
+/* Cards da home para conteúdo transversal (não pertence a um setor só). */
+var REFERENCIAS_GERAIS = [
+  { id: 'bancos', nome: 'Códigos de Bancos (exemplo)', icone: 'landmark', descricao: 'Lista de códigos usada na confirmação de dados bancários. Valores fictícios nesta demonstração.' }
+];
+var SETORES_COM_FILAS = ['vendas', 'atendimento', 'retencao'];
+
+/* =========================================================================
+   3. Novidades: exemplos ligados a setores da demonstração. O link e o
+      mecanismo funcionam; o texto é só exemplo.
+   ========================================================================= */
+var NOTICIAS = [
+  {
+    id: 'not-demo-001',
+    titulo: 'Checklist de Vendas atualizado',
+    corpo: 'Revise os critérios de "Condução do atendimento": a confirmação dos dados cadastrais passou a valer 10 pontos.',
+    data: '2026-01-10',
+    setorRelacionado: 'vendas'
+  },
+  {
+    id: 'not-demo-002',
+    titulo: 'Novos motivos de cancelamento documentados',
+    corpo: 'O Suporte agora tem uma referência para cada motivo de cancelamento. Consulte antes de orientar o cliente.',
+    data: '2026-01-12',
+    setorRelacionado: 'suporte'
+  }
+];
+
+/* =========================================================================
+   4. Navegação / render
+   ========================================================================= */
+var setorAtual = null;
+
+function escapar(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function iconeSvg(nome, tamanho) { return '<i data-lucide="' + nome + '" style="width:' + (tamanho || 18) + 'px;height:' + (tamanho || 18) + 'px;"></i>'; }
+function dataBR(iso) { var p = String(iso).split('-'); return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : iso; }
+function renderIcons() { if (window.lucide) lucide.createIcons(); }
+function setorPorId(id) { return SETORES.filter(function (s) { return s.id === id; })[0]; }
+function checklistsDoSetor(id) { return CHECKLISTS.filter(function (c) { return c.setor === id; }); }
+function scriptDoSetor(id) { return SCRIPTS.filter(function (s) { return s.setor === id; })[0]; }
+function referenciasDoSetor(id) { return REFERENCIAS.filter(function (r) { return Array.isArray(r.setor) ? r.setor.indexOf(id) >= 0 : r.setor === id; }); }
+
+/* Um "comando" é um rótulo que começa com "/" (ex.: "/CONF", "/i1 Abordagem
+   (saudação inicial)") — recebe uma marcação própria (mono + fundo) pra
+   ficar bem mais visível que um rótulo comum. Pedido do usuário (08/09):
+   "preciso que todo comando sofra um pouco de negrito para que o usuario
+   consiga visualizar melhor". */
+/* idPrefix identifica de onde vêm esses blocos ("script|3", "referencia|1")
+   pra cada um poder ter um ID estável de edição ("script|3|bloco|0") —
+   ver bloco "Edição de conteúdo (Admin)" mais abaixo. */
+function renderUmBloco_(id, eb, numVisivel, admin) {
+  return '<div class="bloco-script" data-card-id="' + id + '">'
+    + '<div class="cabecalho"><span class="num">' + numVisivel + '</span><div class="cabecalho-textos"><h3>' + escapar(eb.titulo) + '</h3>'
+    + (eb.subtitulo ? '<p class="subtitulo">' + escapar(eb.subtitulo) + '</p>' : '') + '</div>'
+    + (admin ? acoesAdminHtml_(id) : '') + '</div>'
+    + eb.itens.map(function (it) {
+        var ehComando = /^\//.test(it.rotulo || '');
+        return '<div class="fala-item"><span class="rotulo' + (ehComando ? ' rotulo-cmd' : '') + '">' + escapar(it.rotulo) + '</span><p>' + escapar(it.texto) + '</p></div>';
+      }).join('')
+    + '</div>';
+}
+
+function renderBlocosHtml(blocos, idPrefix) {
+  var admin = ehAdmin_();
+  var destino = idPrefix + '|bloco';
+  var lista = blocos.map(function (b, i) {
+    var id = idPrefix + '|bloco|' + i;
+    var ov = OVERRIDES[id];
+    if (ov && ov.excluido) return null;
+    var eb = (ov && ov.dados) ? ov.dados : b;
+    return { id: id, conteudo: eb };
+  }).filter(Boolean);
+  lista = lista.concat(cardsAdicionadosPara_(destino));
+  lista = ordenarPorSalvo_(lista, destino);
+  var numVisivel = 0;
+  return lista.map(function (item) {
+    numVisivel++;
+    return renderUmBloco_(item.id, item.conteudo, numVisivel, admin);
+  }).join('');
+}
+
+/* Tabela de Filas de Transferência — reaproveitada como aba dentro de
+   alguns setores (ver SETORES_COM_FILAS). */
+function htmlFilasTransferencia() {
+  return FILAS_TRANSFERENCIA.map(function (grp) {
+    return '<div class="filas-grupo ' + grp.cor + '"><h4>' + iconeSvg('route', 13) + ' ' + escapar(grp.grupo) + '</h4>'
+      + '<div class="tabela-filas-scroll"><table class="tabela-filas"><thead><tr><th>Setor</th><th>Transferência voz</th><th>Transferência chat</th></tr></thead><tbody>'
+      + grp.itens.map(function (it) {
+          return '<tr><td>' + escapar(it.setor) + '</td><td class="mono-fila">' + escapar(it.voz) + '</td><td class="mono-fila">' + escapar(it.chat) + '</td></tr>';
+        }).join('')
+      + '</tbody></table></div></div>';
+  }).join('') + '<div class="dicas-filas">' + DICAS_FILAS.map(function (d) {
+    return '<div class="dica-box"><b>' + escapar(d.titulo) + '</b>' + escapar(d.texto) + '</div>';
+  }).join('') + '</div>';
+}
+
+/* Só a primeira letra maiúscula, resto minúsculo — usado só no menu do
+   topbar (pedido do usuário: "deixa tudo no hover top... com apenas a
+   primeira letra maiuscula"). Nos cards, título do setor etc. os nomes
+   continuam com a grafia normal. */
+function primeiraMaiuscula(s) {
+  s = String(s == null ? '' : s);
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function montarCategorias() {
+  var nav = document.getElementById('categoriaNav');
+  var html = '<button class="cat-tab' + (!setorAtual ? ' on' : '') + '" onclick="irParaHome()">' + primeiraMaiuscula('Todos') + '</button>';
+  html += SETORES.map(function (s) {
+    return '<button class="cat-tab' + (setorAtual === s.id ? ' on' : '') + '" onclick="abrirSetor(\'' + s.id + '\')">' + escapar(primeiraMaiuscula(s.nome)) + '</button>';
+  }).join('');
+  nav.innerHTML = html;
+}
+
+function montarGridSetores() {
+  var grid = document.getElementById('gridSetores');
+  grid.innerHTML = SETORES.map(function (s) {
+    var qtdChecklists = checklistsDoSetor(s.id).length;
+    var temScript = !!scriptDoSetor(s.id);
+    var qtdReferencias = referenciasDoSetor(s.id).length;
+    var docs = '';
+    if (qtdChecklists) docs += '<span class="chip">' + qtdChecklists + ' checklist' + (qtdChecklists > 1 ? 's' : '') + '</span>';
+    if (temScript) docs += '<span class="chip acento">Script de atendimento</span>';
+    if (qtdReferencias) docs += '<span class="chip">' + qtdReferencias + ' referência' + (qtdReferencias > 1 ? 's' : '') + '</span>';
+    return '<div class="card card-setor" onclick="abrirSetor(\'' + s.id + '\')">'
+      + '<div class="top-row" style="display:flex;justify-content:space-between;align-items:flex-start;">'
+      +   '<span class="badge-ico-lg">' + iconeSvg(s.icone, 21) + '</span>'
+      + '</div>'
+      + '<h3>' + escapar(s.nome) + '</h3>'
+      + '<div class="docs">' + docs + '</div>'
+      + '<div class="rodape">Ver setor ' + iconeSvg('arrow-right', 12) + '</div>'
+      + '</div>';
+  }).join('');
+  renderIcons();
+}
+
+/* Grade de referências gerais (home) — conteúdo transversal, não amarrado a
+   um setor só (Códigos de Bancos). */
+function montarGridReferencias() {
+  var grid = document.getElementById('gridReferencias');
+  if (!grid) return;
+  grid.innerHTML = REFERENCIAS_GERAIS.map(function (r) {
+    return '<div class="card card-ref" onclick="abrirReferenciaGeral(\'' + r.id + '\')">'
+      + '<span class="badge-ico-lg">' + iconeSvg(r.icone, 20) + '</span>'
+      + '<div><h3>' + escapar(r.nome) + '</h3><p>' + escapar(r.descricao) + '</p></div>'
+      + '</div>';
+  }).join('');
+  renderIcons();
+}
+
+function irParaHome() {
+  setorAtual = null;
+  document.getElementById('paginaHome').hidden = false;
+  document.getElementById('paginaSetor').hidden = true;
+  document.getElementById('paginaReferencia').hidden = true;
+  montarCategorias();
+  window.scrollTo(0, 0);
+}
+
+var docAtual = null; // { tipo: 'checklist'|'script', indice }
+
+function abrirSetor(id, doc) {
+  setorAtual = id;
+  var s = setorPorId(id);
+  if (!s) return;
+  document.getElementById('paginaHome').hidden = true;
+  document.getElementById('paginaSetor').hidden = false;
+  document.getElementById('paginaReferencia').hidden = true;
+  document.getElementById('setorIcone').innerHTML = iconeSvg(s.icone, 22);
+  document.getElementById('setorTitulo').textContent = s.nome;
+  montarCategorias();
+
+  var checklists = checklistsDoSetor(id);
+  var script = scriptDoSetor(id);
+  var referencias = referenciasDoSetor(id);
+  var tabs = document.getElementById('tabsDoc');
+  var html = '';
+  checklists.forEach(function (c, i) {
+    html += '<button class="tab-doc" data-doc="checklist-' + i + '" onclick="mostrarDoc(\'checklist\',' + i + ')">' + escapar(c.variante) + '</button>';
+  });
+  if (script) html += '<button class="tab-doc" data-doc="script" onclick="mostrarDoc(\'script\',0)">' + escapar(script.titulo) + '</button>';
+  referencias.forEach(function (r, i) {
+    html += '<button class="tab-doc" data-doc="referencia-' + i + '" onclick="mostrarDoc(\'referencia\',' + i + ')">' + escapar(r.titulo) + '</button>';
+  });
+  if (SETORES_COM_FILAS.indexOf(id) >= 0) {
+    html += '<button class="tab-doc" data-doc="filas" onclick="mostrarDoc(\'filas\',0)">Filas de Transferência</button>';
+  }
+  tabs.innerHTML = html;
+
+  var alvo = doc || (checklists.length ? { tipo: 'checklist', indice: 0 } : script ? { tipo: 'script', indice: 0 } : { tipo: 'referencia', indice: 0 });
+  mostrarDoc(alvo.tipo, alvo.indice);
+  if (ALVO_DESTAQUE) aplicarDestaque_('#conteudoDoc');
+  else window.scrollTo(0, 0);
+}
+
+function mostrarDoc(tipo, indiceLocal) {
+  var checklists = checklistsDoSetor(setorAtual);
+  var script = scriptDoSetor(setorAtual);
+  var referencias = referenciasDoSetor(setorAtual);
+  docAtual = { tipo: tipo, indice: indiceLocal };
+
+  Array.prototype.forEach.call(document.querySelectorAll('.tab-doc'), function (b) { b.classList.remove('on'); });
+  var seletorAtivo = tipo === 'script' ? '[data-doc="script"]' : tipo === 'referencia' ? '[data-doc="referencia-' + indiceLocal + '"]' : tipo === 'filas' ? '[data-doc="filas"]' : '[data-doc="checklist-' + indiceLocal + '"]';
+  var ativo = document.querySelector(seletorAtivo);
+  if (ativo) ativo.classList.add('on');
+
+  var classifBox = document.getElementById('classificacoesBox');
+  var corpo = document.getElementById('conteudoDoc');
+
+  if (tipo === 'checklist') {
+    var doc = checklists[indiceLocal];
+    var docIdx = CHECKLISTS.indexOf(doc);
+    var admin = ehAdmin_();
+    classifBox.innerHTML = '<div class="classificacoes">' + CLASSIFICACOES_PADRAO.map(function (c) {
+      return '<div class="classe-box ' + c.classe + '">' + c.rotulo + '<span>' + c.faixa + '</span></div>';
+    }).join('') + '</div>';
+
+    function renderUmGrupo_(id, eg) {
+      return '<div class="grupo-criterios" data-card-id="' + id + '"><h4><span>' + escapar(eg.categoria) + '</span>' + (admin ? acoesAdminHtml_(id) : '') + '</h4>'
+        + eg.itens.map(function (it) {
+            return '<div class="criterio-row"><p>' + escapar(it.c) + '</p><span class="pontos-badge">-' + it.p + ' pts</span></div>';
+          }).join('')
+        + '</div>';
+    }
+    var destinoGrupo = 'checklist|' + docIdx + '|grupo';
+    var listaGrupos = doc.grupos.map(function (g, gi) {
+      var id = destinoGrupo + '|' + gi;
+      var ov = OVERRIDES[id];
+      if (ov && ov.excluido) return null;
+      var eg = (ov && ov.dados) ? ov.dados : g;
+      return { id: id, conteudo: eg };
+    }).filter(Boolean);
+    listaGrupos = listaGrupos.concat(cardsAdicionadosPara_(destinoGrupo));
+    listaGrupos = ordenarPorSalvo_(listaGrupos, destinoGrupo);
+    var html = listaGrupos.map(function (item) { return renderUmGrupo_(item.id, item.conteudo); }).join('');
+
+    var idGraves = 'checklist|' + docIdx + '|graves';
+    var ovGraves = OVERRIDES[idGraves];
+    if (!ovGraves || !ovGraves.excluido) {
+      var itensGraves = (ovGraves && ovGraves.dados) ? ovGraves.dados.itens : doc.graves;
+      html += '<div class="graves-box">'
+        + '<h4><span>' + iconeSvg('alert-octagon', 16) + ' Itens graves — zeram a nota (100 pontos)</span>' + (admin ? acoesAdminHtml_(idGraves, false) : '') + '</h4>'
+        + '<p class="sub">Não manteve a ética / respeito / cordialidade.</p>'
+        + itensGraves.map(function (g) {
+            return '<div class="grave-row"><p>' + escapar(g) + '</p><span class="pontos-badge">-100 pts</span></div>';
+          }).join('')
+        + '</div>';
+    }
+    corpo.innerHTML = html;
+    if (admin) ativarArrastar_(corpo, '.grupo-criterios', destinoGrupo);
+  } else if (tipo === 'referencia') {
+    classifBox.innerHTML = '';
+    var refDoc = referencias[indiceLocal];
+    var htmlImagens = (refDoc.imagens || []).map(function (src) {
+      return '<div class="moldura-imagem"><img class="imagem-referencia" src="' + src + '" alt="' + escapar(refDoc.titulo) + '"></div>';
+    }).join('');
+    var idPrefixRef = 'referencia|' + REFERENCIAS.indexOf(refDoc);
+    corpo.innerHTML = renderBlocosHtml(refDoc.blocos, idPrefixRef) + htmlImagens;
+    if (ehAdmin_()) ativarArrastar_(corpo, '.bloco-script', idPrefixRef + '|bloco');
+  } else if (tipo === 'filas') {
+    classifBox.innerHTML = '';
+    corpo.innerHTML = htmlFilasTransferencia();
+  } else {
+    classifBox.innerHTML = '';
+    var idPrefixScript = 'script|' + SCRIPTS.indexOf(script);
+    corpo.innerHTML = renderBlocosHtml(script.blocos, idPrefixScript);
+    if (ehAdmin_()) ativarArrastar_(corpo, '.bloco-script', idPrefixScript + '|bloco');
+  }
+  renderIcons();
+}
+
+/* =========================================================================
+   4b. Referências gerais (Códigos de bancos) —
+   páginas próprias fora do fluxo de setor, abertas a partir da home.
+   ========================================================================= */
+function abrirReferenciaGeral(id) {
+  var ref = REFERENCIAS_GERAIS.filter(function (r) { return r.id === id; })[0];
+  if (!ref) return;
+  setorAtual = null;
+  document.getElementById('paginaHome').hidden = true;
+  document.getElementById('paginaSetor').hidden = true;
+  document.getElementById('paginaReferencia').hidden = false;
+  document.getElementById('refIcone').innerHTML = iconeSvg(ref.icone, 22);
+  document.getElementById('refTitulo').textContent = ref.nome;
+  document.getElementById('refDescricao').textContent = ref.descricao;
+  montarCategorias();
+
+  var corpo = document.getElementById('conteudoReferencia');
+  if (id === 'bancos') {
+    corpo.innerHTML = '<div class="bancos-grid">' + CODIGOS_BANCOS.map(function (b) {
+      return '<div class="banco-row"><span>' + escapar(b.nome) + '</span><span class="cod">' + escapar(b.codigo) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  renderIcons();
+  if (ALVO_DESTAQUE) aplicarDestaque_('#conteudoReferencia');
+  else window.scrollTo(0, 0);
+}
+
+/* =========================================================================
+   5. Novidades (popup automático + painel)
+   ========================================================================= */
+var NOTICIAS_VISTAS_KEY = 'portalqualidade_noticias_vistas';
+var noticiaDoPopup = null;
+
+function noticiasVistas() { try { return JSON.parse(localStorage.getItem(NOTICIAS_VISTAS_KEY) || '[]'); } catch (e) { return []; } }
+function marcarVista(id) {
+  var v = noticiasVistas();
+  if (v.indexOf(id) === -1) { v.push(id); localStorage.setItem(NOTICIAS_VISTAS_KEY, JSON.stringify(v)); }
+}
+function atualizarPontoNoticias() {
+  var v = noticiasVistas();
+  document.getElementById('pontoNoticias').hidden = !NOTICIAS.some(function (n) { return v.indexOf(n.id) === -1; });
+}
+function verificarNoticiaNaoVista() {
+  var v = noticiasVistas();
+  var pendente = NOTICIAS.filter(function (n) { return v.indexOf(n.id) === -1; })[0];
+  atualizarPontoNoticias();
+  if (!pendente) return;
+  noticiaDoPopup = pendente;
+  document.getElementById('nTitulo').textContent = pendente.titulo;
+  document.getElementById('nCorpo').textContent = pendente.corpo;
+  document.getElementById('nVerSetor').hidden = !pendente.setorRelacionado;
+  document.getElementById('popupNoticia').classList.remove('hidden');
+  marcarVista(pendente.id);
+  atualizarPontoNoticias();
+}
+function fecharPopupNoticia() { document.getElementById('popupNoticia').classList.add('hidden'); }
+function irParaSetorDaNoticia() {
+  if (!noticiaDoPopup || !noticiaDoPopup.setorRelacionado) return;
+  fecharPopupNoticia();
+  abrirSetor(noticiaDoPopup.setorRelacionado);
+}
+function abrirPainelNoticias() {
+  var v = noticiasVistas();
+  document.getElementById('listaNoticias').innerHTML = NOTICIAS.map(function (n) {
+    var naoLida = v.indexOf(n.id) === -1;
+    if (naoLida) marcarVista(n.id);
+    return '<div class="noticia-item' + (naoLida ? ' nao-lida' : '') + '">'
+      + '<span class="badge-ico">' + iconeSvg('megaphone', 15) + '</span>'
+      + '<div><h4>' + escapar(n.titulo) + '</h4><p>' + escapar(n.corpo) + '</p><span class="data">' + dataBR(n.data) + '</span></div>'
+      + '</div>';
+  }).join('');
+  document.getElementById('painelNoticias').classList.remove('hidden');
+  atualizarPontoNoticias();
+  renderIcons();
+}
+function fecharPainelNoticias() { document.getElementById('painelNoticias').classList.add('hidden'); }
+
+/* =========================================================================
+   5b. Pesquisa global (10/09) — indexa TODO o conteúdo do site (setores,
+   checklists item a item, scripts, referências, filas, bancos, novidades)
+   e cada resultado leva exatamente pra aba/página onde aquilo aparece.
+   ========================================================================= */
+var INDICE_PESQUISA = [];
+var RESULTADOS_PESQUISA = [];
+
+function normalizarBusca_(s) {
+  return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function montarIndicePesquisa() {
+  INDICE_PESQUISA = [];
+  function add(texto, titulo, contexto, nav) {
+    INDICE_PESQUISA.push({
+      busca: normalizarBusca_(texto + ' ' + titulo + ' ' + contexto),
+      // "titulo" é só pra exibir na lista (pode ser curto, tipo "Atendente");
+      // "alvo" é o texto completo do item, usado pra achar e destacar o
+      // elemento certo na página — com rótulos curtos e repetidos (o mesmo
+      // "Atendente" aparece em várias falas do mesmo bloco), usar só o
+      // título fazia o destaque cair sempre na primeira ocorrência. Bug
+      // relatado pelo usuário (10/09): "se vc selecionar o segundo
+      // resultado vc tambem vai pro primeiro registro encontrado".
+      titulo: titulo, contexto: contexto, nav: nav, alvo: texto
+    });
+  }
+
+  SETORES.forEach(function (s) { add(s.nome, s.nome, 'Setor', { setor: s.id }); });
+
+  CHECKLISTS.forEach(function (c) {
+    var docIdx = CHECKLISTS.indexOf(c);
+    var lista = checklistsDoSetor(c.setor);
+    var i = lista.indexOf(c);
+    var nomeSetor = (setorPorId(c.setor) || {}).nome || c.setor;
+    var base = nomeSetor + ' · ' + c.variante;
+    var nav = { setor: c.setor, doc: { tipo: 'checklist', indice: i } };
+    add(c.variante, c.variante, nomeSetor + ' · Checklist', nav);
+    c.grupos.forEach(function (g, gi) {
+      var ovG = OVERRIDES['checklist|' + docIdx + '|grupo|' + gi];
+      if (ovG && ovG.excluido) return;
+      var eg = (ovG && ovG.dados) ? ovG.dados : g;
+      add(eg.categoria, eg.categoria, base, nav);
+      eg.itens.forEach(function (it) { add(it.c, it.c, base + ' · ' + eg.categoria, nav); });
+    });
+    cardsAdicionadosPara_('checklist|' + docIdx + '|grupo').forEach(function (ex) {
+      var eg2 = ex.conteudo;
+      add(eg2.categoria, eg2.categoria, base, nav);
+      eg2.itens.forEach(function (it) { add(it.c, it.c, base + ' · ' + eg2.categoria, nav); });
+    });
+    var ovGraves = OVERRIDES['checklist|' + docIdx + '|graves'];
+    if (!ovGraves || !ovGraves.excluido) {
+      var itensGraves = (ovGraves && ovGraves.dados) ? ovGraves.dados.itens : (c.graves || []);
+      itensGraves.forEach(function (gr) { add(gr, gr, base + ' · Itens graves', nav); });
+    }
+  });
+
+  SCRIPTS.forEach(function (sc) {
+    var docIdx2 = SCRIPTS.indexOf(sc);
+    var nomeSetor = (setorPorId(sc.setor) || {}).nome || sc.setor;
+    var base = nomeSetor + ' · ' + sc.titulo;
+    var nav = { setor: sc.setor, doc: { tipo: 'script', indice: 0 } };
+    add(sc.titulo, sc.titulo, nomeSetor + ' · Script', nav);
+    sc.blocos.forEach(function (b, bi) {
+      var ovB = OVERRIDES['script|' + docIdx2 + '|bloco|' + bi];
+      if (ovB && ovB.excluido) return;
+      var eb = (ovB && ovB.dados) ? ovB.dados : b;
+      add(eb.titulo + ' ' + (eb.subtitulo || ''), eb.titulo, base, nav);
+      eb.itens.forEach(function (it) { add(it.rotulo + ' ' + it.texto, it.rotulo, base + ' · ' + eb.titulo, nav); });
+    });
+    cardsAdicionadosPara_('script|' + docIdx2 + '|bloco').forEach(function (ex) {
+      var eb2 = ex.conteudo;
+      add(eb2.titulo + ' ' + (eb2.subtitulo || ''), eb2.titulo, base, nav);
+      eb2.itens.forEach(function (it) { add(it.rotulo + ' ' + it.texto, it.rotulo, base + ' · ' + eb2.titulo, nav); });
+    });
+  });
+
+  REFERENCIAS.forEach(function (rf) {
+    var docIdx3 = REFERENCIAS.indexOf(rf);
+    var setores = Array.isArray(rf.setor) ? rf.setor : [rf.setor];
+    setores.forEach(function (sid) {
+      var lista = referenciasDoSetor(sid);
+      var i = lista.indexOf(rf);
+      if (i < 0) return;
+      var nomeSetor = (setorPorId(sid) || {}).nome || sid;
+      var base = nomeSetor + ' · ' + rf.titulo;
+      var nav = { setor: sid, doc: { tipo: 'referencia', indice: i } };
+      add(rf.titulo, rf.titulo, nomeSetor + ' · Referência', nav);
+      rf.blocos.forEach(function (b, bi) {
+        var ovB = OVERRIDES['referencia|' + docIdx3 + '|bloco|' + bi];
+        if (ovB && ovB.excluido) return;
+        var eb = (ovB && ovB.dados) ? ovB.dados : b;
+        add(eb.titulo + ' ' + (eb.subtitulo || ''), eb.titulo, base, nav);
+        eb.itens.forEach(function (it) { add(it.rotulo + ' ' + it.texto, it.rotulo, base + ' · ' + eb.titulo, nav); });
+      });
+      cardsAdicionadosPara_('referencia|' + docIdx3 + '|bloco').forEach(function (ex) {
+        var eb2 = ex.conteudo;
+        add(eb2.titulo + ' ' + (eb2.subtitulo || ''), eb2.titulo, base, nav);
+        eb2.itens.forEach(function (it) { add(it.rotulo + ' ' + it.texto, it.rotulo, base + ' · ' + eb2.titulo, nav); });
+      });
+    });
+  });
+
+  if (typeof FILAS_TRANSFERENCIA !== 'undefined' && typeof SETORES_COM_FILAS !== 'undefined') {
+    // Um índice por setor que tem a aba de filas, senão, com escopo de
+    // pesquisa por setor, a fila só apareceria buscando de dentro de um
+    // único setor.
+    SETORES_COM_FILAS.forEach(function (sid) {
+      var navFilas = { setor: sid, doc: { tipo: 'filas', indice: 0 } };
+      var nomeSetorFilas = (setorPorId(sid) || {}).nome || sid;
+      FILAS_TRANSFERENCIA.forEach(function (grp) {
+        add(grp.grupo, grp.grupo, nomeSetorFilas + ' · Filas de Transferência', navFilas);
+        grp.itens.forEach(function (it) {
+          add(it.setor + ' ' + it.voz + ' ' + it.chat, it.setor, nomeSetorFilas + ' · Filas de Transferência · ' + grp.grupo, navFilas);
+        });
+      });
+      if (typeof DICAS_FILAS !== 'undefined') {
+        DICAS_FILAS.forEach(function (d) { add(d.titulo + ' ' + d.texto, d.titulo, nomeSetorFilas + ' · Filas de Transferência', navFilas); });
+      }
+    });
+  }
+
+  if (typeof CODIGOS_BANCOS !== 'undefined') {
+    CODIGOS_BANCOS.forEach(function (b) {
+      add(b.nome + ' ' + b.codigo, b.nome + ' — ' + b.codigo, 'Códigos dos Principais Bancos', { refGeral: 'bancos' });
+    });
+  }
+
+  if (typeof CLASSIFICACOES_PADRAO !== 'undefined') {
+    CLASSIFICACOES_PADRAO.forEach(function (c) { add(c.rotulo + ' ' + c.faixa, c.rotulo, 'Classificações', { setor: SETORES[0].id }); });
+  }
+
+  NOTICIAS.forEach(function (n) { add(n.titulo + ' ' + n.corpo, n.titulo, 'Novidade', { setor: n.setorRelacionado }); });
+}
+
+/* Escopo da pesquisa (14/09, pedido do usuário): abrindo a busca de dentro
+   de um setor, ela some só o que está contido naquele setor — evita
+   misturar, por exemplo, um critério de um setor com um comando de outro
+   na mesma lista. Tem um botão pra abrir mão do escopo e buscar em tudo. */
+var PESQUISA_ESCOPO = null;
+
+function atualizarRotuloEscopoPesquisa_() {
+  var box = document.getElementById('pesquisaEscopoBox');
+  if (!box) return;
+  if (PESQUISA_ESCOPO) {
+    var s = setorPorId(PESQUISA_ESCOPO);
+    document.getElementById('pesquisaEscopoNome').textContent = s ? s.nome : PESQUISA_ESCOPO;
+    box.hidden = false;
+  } else {
+    box.hidden = true;
+  }
+}
+function alternarEscopoPesquisa() {
+  PESQUISA_ESCOPO = PESQUISA_ESCOPO ? null : (setorAtual || null);
+  atualizarRotuloEscopoPesquisa_();
+  executarPesquisa();
+}
+
+function abrirPesquisa() {
+  var ov = document.getElementById('overlayPesquisa');
+  ov.classList.remove('hidden');
+  PESQUISA_ESCOPO = setorAtual || null;
+  atualizarRotuloEscopoPesquisa_();
+  var campo = document.getElementById('pesquisaInput');
+  campo.value = '';
+  executarPesquisa();
+  setTimeout(function () { campo.focus(); }, 30);
+  renderIcons();
+}
+function fecharPesquisa() {
+  var ov = document.getElementById('overlayPesquisa');
+  if (ov) ov.classList.add('hidden');
+}
+
+function executarPesquisa() {
+  var bruto = document.getElementById('pesquisaInput').value.trim();
+  var termo = normalizarBusca_(bruto);
+  var cont = document.getElementById('pesquisaResultados');
+  if (termo.length < 2) {
+    RESULTADOS_PESQUISA = [];
+    cont.innerHTML = '<p class="pesquisa-vazio">Digite ao menos 2 letras.</p>';
+    return;
+  }
+  var palavras = termo.split(/\s+/);
+  var indiceBase = PESQUISA_ESCOPO
+    ? INDICE_PESQUISA.filter(function (e) { return e.nav && e.nav.setor === PESQUISA_ESCOPO; })
+    : INDICE_PESQUISA;
+  RESULTADOS_PESQUISA = indiceBase.filter(function (e) {
+    for (var i = 0; i < palavras.length; i++) { if (e.busca.indexOf(palavras[i]) < 0) return false; }
+    return true;
+  }).slice(0, 60);
+
+  if (!RESULTADOS_PESQUISA.length) {
+    var ondeMsg = PESQUISA_ESCOPO ? (' em ' + escapar((setorPorId(PESQUISA_ESCOPO) || {}).nome || PESQUISA_ESCOPO)) : '';
+    cont.innerHTML = '<p class="pesquisa-vazio">Nada encontrado' + ondeMsg + ' para "' + escapar(bruto) + '".</p>';
+    return;
+  }
+  cont.innerHTML = RESULTADOS_PESQUISA.map(function (r, i) {
+    return '<button class="resultado-item" onclick="irParaResultado(' + i + ')">'
+      + '<span class="resultado-titulo">' + escapar(r.titulo) + '</span>'
+      + '<span class="resultado-contexto">' + escapar(r.contexto) + '</span>'
+      + '</button>';
+  }).join('');
+}
+
+/* Depois de redirecionar da pesquisa: rola até o item exato (centralizado
+   na tela) e pisca um destaque nele por 3s pra o usuário achar onde caiu.
+   Pedido do usuário (10/09). */
+var ALVO_DESTAQUE = null;
+
+function chaveMatch_(s) {
+  return normalizarBusca_(s).replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/* Acha o elemento cujo texto bate com a chave. Tenta a chave inteira
+   primeiro (match exato do item pesquisado) e só depois prefixos menores —
+   senão dois critérios com começo parecido ("Atendente realizou
+   confirmação de dados...") pegam o item errado. */
+function primeiroComTexto_(cont, seletor, chaveCompleta) {
+  if (!chaveCompleta || chaveCompleta.length < 8) return null;
+  var cands = cont.querySelectorAll(seletor);
+  var textos = [];
+  for (var i = 0; i < cands.length; i++) textos.push(chaveMatch_(cands[i].textContent));
+  var tamanhos = [chaveCompleta.length, Math.floor(chaveCompleta.length * 0.6), 32];
+  for (var t = 0; t < tamanhos.length; t++) {
+    var chave = chaveCompleta.slice(0, tamanhos[t]);
+    if (chave.length < 8) continue;
+    for (var j = 0; j < textos.length; j++) {
+      if (textos[j].indexOf(chave) >= 0) return cands[j];
+    }
+  }
+  return null;
+}
+
+function aplicarDestaque_(containerSel) {
+  var texto = ALVO_DESTAQUE;
+  ALVO_DESTAQUE = null;
+  if (!texto) return;
+  setTimeout(function () {
+    var cont = document.querySelector(containerSel);
+    if (!cont) return;
+    var chave = chaveMatch_(texto);
+    // primeiro os itens específicos (linha de critério, fala, banco), só
+    // depois os blocos maiores — senão o container "engole" o match.
+    var alvo = primeiroComTexto_(cont, '.criterio-row, .grave-row, .fala-item, .banco-row', chave)
+      || primeiroComTexto_(cont, '.bloco-script, .grupo-criterios, .filas-grupo', chave)
+      || cont.firstElementChild;
+    if (!alvo) { window.scrollTo(0, 0); return; }
+    alvo.scrollIntoView({ block: 'center' });
+    alvo.classList.remove('destaque-busca');
+    void alvo.offsetWidth; // reinicia a animação se já tiver rodado
+    alvo.classList.add('destaque-busca');
+    var el = alvo;
+    setTimeout(function () { el.classList.remove('destaque-busca'); }, 3100);
+  }, 70);
+}
+
+function irParaResultado(i) {
+  var r = RESULTADOS_PESQUISA[i];
+  if (!r) return;
+  fecharPesquisa();
+  ALVO_DESTAQUE = r.alvo || r.titulo;
+  if (r.nav.refGeral) { abrirReferenciaGeral(r.nav.refGeral); }
+  else { abrirSetor(r.nav.setor, r.nav.doc); }
+}
+
+/* =========================================================================
+   5c. Edição de conteúdo (só Admin) — 10/09
+
+   Pedido do usuário: "o usuario deve conseguir alterar por completo
+   qualquer bloco/card de conteudo de todos os setores". A unidade editável
+   é sempre o "card" que já aparece na tela — um bloco de script/referência
+   (cabeçalho + itens) ou um grupo de critérios/itens graves de
+   checklist.
+
+   Cada card tem um ID estável calculado a partir da posição dele no array
+   de origem (ex.: "script|2|bloco|0" = SCRIPTS[2].blocos[0]). As edições
+   NÃO mudam o conteúdo padrão do Index.html — ficam guardadas à parte, na
+   planilha (ConteudoEditado), como um "diff" por ID, e são aplicadas por
+   cima na hora de renderizar (ver OVERRIDES). Excluir um card só marca
+   Excluido=true nesse diff — nunca mexe no array original — por isso dá
+   pra desfazer, e por isso os IDs dos outros cards nunca mudam.
+   ========================================================================= */
+var OVERRIDES = {}; // id -> { tipo, dados, excluido }
+
+function ehAdmin_() { return !!(sessaoAtual && sessaoAtual.patente === 'Admin'); }
+
+function obterTokenSessao_() {
+  try { return localStorage.getItem(SESSAO_TOKEN_KEY) || ''; } catch (e) { return ''; }
+}
+
+function carregarConteudoEditado_(aoTerminar) {
+  if (!window.google || !google.script || !google.script.run) { if (aoTerminar) aoTerminar(); return; }
+  google.script.run
+    .withSuccessHandler(function (res) {
+      OVERRIDES = {};
+      (res && res.overrides || []).forEach(function (o) {
+        var dados = null;
+        try { dados = o.json ? JSON.parse(o.json) : null; } catch (e) {}
+        OVERRIDES[o.id] = { tipo: o.tipo, dados: dados, excluido: !!o.excluido };
+      });
+      (res && res.novidades || []).forEach(function (n) {
+        NOTICIAS.push({ id: n.id, titulo: n.titulo, corpo: n.corpo, data: n.data, setorRelacionado: n.setorRelacionado || '' });
+      });
+      if (aoTerminar) aoTerminar();
+    })
+    .withFailureHandler(function () { if (aoTerminar) aoTerminar(); })
+    .carregarConteudoEditado();
+}
+
+function rerenderizarDocAtual_() {
+  if (docAtual) mostrarDoc(docAtual.tipo, docAtual.indice);
+}
+
+/* Decodifica um ID de volta pro objeto de origem (base, sem overrides) +
+   metadados úteis pras mensagens (título do documento, setor). */
+/* Cards adicionados por duplicação (14/09) têm ID "novo-..." e vivem
+   inteiramente dentro do próprio override — não existe "base" deles no
+   Index.html, o JSON guardado já é { destino, conteudo } (destino aponta
+   pro mesmo tipo de chave usada nos cards originais, ex.:
+   "checklist|3|grupo", pra saber em qual card/documento ele aparece). */
+function cardsAdicionadosPara_(destino) {
+  var lista = [];
+  Object.keys(OVERRIDES).forEach(function (id) {
+    if (id.indexOf('novo-') !== 0) return;
+    var ov = OVERRIDES[id];
+    if (!ov || ov.excluido || !ov.dados || ov.dados.destino !== destino) return;
+    lista.push({ id: id, conteudo: ov.dados.conteudo });
+  });
+  return lista;
+}
+
+/* Ordem escolhida pelo Admin (arrastar-e-soltar) pra um destino — guardada
+   como mais um override, ID "ordem|<destino>", cujo "dados" é a lista de
+   IDs na ordem desejada. Cards que não estão nessa lista (recém-criados
+   por duplicação, por exemplo) sempre vão pro final, na ordem em que já
+   apareciam — assim nunca "somem" por não terem posição salva ainda. */
+function ordemPara_(destino) {
+  var ov = OVERRIDES['ordem|' + destino];
+  return (ov && !ov.excluido && Array.isArray(ov.dados)) ? ov.dados : null;
+}
+function ordenarPorSalvo_(lista, destino) {
+  var ordem = ordemPara_(destino);
+  if (!ordem) return lista;
+  var posicao = {};
+  ordem.forEach(function (id, i) { posicao[id] = i; });
+  var comOrdem = lista.filter(function (it) { return posicao.hasOwnProperty(it.id); });
+  var semOrdem = lista.filter(function (it) { return !posicao.hasOwnProperty(it.id); });
+  comOrdem.sort(function (a, b) { return posicao[a.id] - posicao[b.id]; });
+  return comOrdem.concat(semOrdem);
+}
+
+function resolverPorId_(id) {
+  if (String(id).indexOf('novo-') === 0) {
+    var ovN = OVERRIDES[id];
+    if (!ovN || !ovN.dados) return null;
+    var destino = ovN.dados.destino;
+    var partesD = String(destino).split('|');
+    var tituloDocN, setorDocN;
+    if (partesD[0] === 'checklist') {
+      var docN = CHECKLISTS[Number(partesD[1])];
+      if (!docN) return null;
+      tituloDocN = docN.variante; setorDocN = docN.setor;
+    } else if (partesD[0] === 'script') {
+      var docN2 = SCRIPTS[Number(partesD[1])];
+      if (!docN2) return null;
+      tituloDocN = docN2.titulo; setorDocN = docN2.setor;
+    } else if (partesD[0] === 'referencia') {
+      var docN3 = REFERENCIAS[Number(partesD[1])];
+      if (!docN3) return null;
+      tituloDocN = docN3.titulo; setorDocN = Array.isArray(docN3.setor) ? docN3.setor[0] : docN3.setor;
+    } else return null;
+    return { unidade: partesD[2], base: ovN.dados.conteudo, setor: setorDocN, tituloDoc: tituloDocN, destino: destino };
+  }
+  var partes = String(id).split('|');
+  var tipoDoc = partes[0];
+  if (tipoDoc === 'checklist') {
+    var doc = CHECKLISTS[Number(partes[1])];
+    if (!doc) return null;
+    if (partes[2] === 'graves') {
+      return { unidade: 'graves', base: { itens: doc.graves }, setor: doc.setor, tituloDoc: doc.variante };
+    }
+    var gi = Number(partes[3]);
+    return { unidade: 'grupo', base: doc.grupos[gi], setor: doc.setor, tituloDoc: doc.variante };
+  }
+  if (tipoDoc === 'script') {
+    var doc2 = SCRIPTS[Number(partes[1])];
+    if (!doc2) return null;
+    return { unidade: 'bloco', base: doc2.blocos[Number(partes[3])], setor: doc2.setor, tituloDoc: doc2.titulo };
+  }
+  if (tipoDoc === 'referencia') {
+    var doc3 = REFERENCIAS[Number(partes[1])];
+    if (!doc3) return null;
+    return {
+      unidade: 'bloco', base: doc3.blocos[Number(partes[3])],
+      setor: Array.isArray(doc3.setor) ? doc3.setor[0] : doc3.setor, tituloDoc: doc3.titulo
+    };
+  }
+  return null;
+}
+/* Igual resolverPorId_, mas já aplicando o override (o que está na tela
+   agora) — usado pra abrir o formulário de edição com os dados atuais. */
+function efetivoPorId_(id) {
+  var r = resolverPorId_(id);
+  if (!r) return null;
+  var ov = OVERRIDES[id];
+  if (ov && ov.excluido) return null;
+  // Cards "novo-" já vêm desembrulhados de resolverPorId_ (r.base já é o
+  // conteúdo atual do card, não o wrapper {destino, conteudo}).
+  r.efetivo = (String(id).indexOf('novo-') === 0) ? r.base : ((ov && ov.dados) ? ov.dados : r.base);
+  return r;
+}
+
+function acoesAdminHtml_(id, permitirExtras) {
+  // "permitirExtras=false" é usado só na caixa de Itens Graves — não faz
+  // sentido duplicar ou reordenar ela (só existe uma por checklist).
+  var grip = permitirExtras === false ? '' : '<span class="admin-grip" title="Arrastar para reordenar">' + iconeSvg('grip-vertical', 14) + '</span>';
+  var dup = permitirExtras === false ? '' :
+    '<button type="button" class="admin-btn" title="Duplicar card" onclick="duplicarCard(\'' + id + '\')">' + iconeSvg('copy-plus', 14) + '</button>';
+  return '<div class="admin-acoes" onclick="event.stopPropagation()">'
+    + grip
+    + dup
+    + '<button type="button" class="admin-btn" title="Editar card" onclick="abrirEdicaoCard(\'' + id + '\')">' + iconeSvg('pencil', 14) + '</button>'
+    + '<button type="button" class="admin-btn admin-btn-excluir" title="Excluir card" onclick="pedirExclusaoCard(\'' + id + '\')">' + iconeSvg('x', 14) + '</button>'
+    + '</div>';
+}
+
+/* ---------- Confirmação genérica (usada por editar e excluir) ---------- */
+var CONFIRMAR_CALLBACK = null;
+function confirmar_(mensagem, callback) {
+  document.getElementById('confirmarMensagem').textContent = mensagem;
+  CONFIRMAR_CALLBACK = callback;
+  document.getElementById('overlayConfirmar').classList.remove('hidden');
+  renderIcons();
+}
+function fecharConfirmar() {
+  document.getElementById('overlayConfirmar').classList.add('hidden');
+  CONFIRMAR_CALLBACK = null;
+}
+function executarConfirmacao() {
+  var cb = CONFIRMAR_CALLBACK;
+  fecharConfirmar();
+  if (cb) cb();
+}
+
+/* ---------- Formulário de edição — os 3 formatos de card ---------- */
+function atributo_(s) { return escapar(s).replace(/"/g, '&quot;'); }
+
+function htmlItemBloco_(it) {
+  return '<div class="item-edicao">'
+    + '<button type="button" class="remover-item" onclick="this.closest(\'.item-edicao\').remove()">' + iconeSvg('x', 13) + '</button>'
+    + '<div class="campo-edicao"><label>Rótulo</label><input class="ed-item-rotulo" value="' + atributo_(it.rotulo || '') + '"></div>'
+    + '<div class="campo-edicao"><label>Texto</label><textarea class="ed-item-texto">' + escapar(it.texto || '') + '</textarea></div>'
+    + '</div>';
+}
+function htmlItemGrupo_(it) {
+  return '<div class="item-edicao">'
+    + '<button type="button" class="remover-item" onclick="this.closest(\'.item-edicao\').remove()">' + iconeSvg('x', 13) + '</button>'
+    + '<div class="item-edicao-linha">'
+    + '<div class="campo-edicao" style="flex:1;"><label>Critério</label><textarea class="ed-item-c">' + escapar(it.c || '') + '</textarea></div>'
+    + '<div class="campo-edicao"><label>Pontos</label><input type="number" class="ed-item-p" value="' + (it.p != null ? it.p : 5) + '"></div>'
+    + '</div></div>';
+}
+function htmlItemGrave_(texto) {
+  return '<div class="item-edicao">'
+    + '<button type="button" class="remover-item" onclick="this.closest(\'.item-edicao\').remove()">' + iconeSvg('x', 13) + '</button>'
+    + '<div class="campo-edicao"><label>Item grave</label><textarea class="ed-item-grave">' + escapar(texto || '') + '</textarea></div>'
+    + '</div>';
+}
+function adicionarItemEdicao_(unidade) {
+  var div = document.createElement('div');
+  if (unidade === 'bloco') div.innerHTML = htmlItemBloco_({ rotulo: '', texto: '' });
+  else if (unidade === 'grupo') div.innerHTML = htmlItemGrupo_({ c: '', p: 5 });
+  else div.innerHTML = htmlItemGrave_('');
+  document.getElementById('edItens').appendChild(div.firstChild);
+  renderIcons();
+}
+
+var EDICAO_ATUAL = null; // { id, unidade, setor, tituloDoc }
+
+function montarFormularioEdicao_(r, tituloModal) {
+  document.getElementById('editarTituloModal').textContent = tituloModal;
+  var corpo = document.getElementById('editarCorpo');
+  var botaoAdd = '';
+  if (r.unidade === 'bloco') {
+    botaoAdd = 'Adicionar item';
+    corpo.innerHTML = '<div class="campo-edicao"><label>Título</label><input id="edTitulo" value="' + atributo_(r.efetivo.titulo) + '"></div>'
+      + '<div class="campo-edicao"><label>Subtítulo (opcional)</label><input id="edSubtitulo" value="' + atributo_(r.efetivo.subtitulo || '') + '"></div>'
+      + '<div id="edItens">' + r.efetivo.itens.map(htmlItemBloco_).join('') + '</div>';
+  } else if (r.unidade === 'grupo') {
+    botaoAdd = 'Adicionar critério';
+    corpo.innerHTML = '<div class="campo-edicao"><label>Categoria</label><input id="edCategoria" value="' + atributo_(r.efetivo.categoria) + '"></div>'
+      + '<div id="edItens">' + r.efetivo.itens.map(htmlItemGrupo_).join('') + '</div>';
+  } else {
+    botaoAdd = 'Adicionar item grave';
+    corpo.innerHTML = '<div id="edItens">' + r.efetivo.itens.map(htmlItemGrave_).join('') + '</div>';
+  }
+  corpo.innerHTML += '<button type="button" class="btn-add-item" onclick="adicionarItemEdicao_(\'' + r.unidade + '\')">' + iconeSvg('plus', 14) + ' ' + botaoAdd + '</button>';
+  document.getElementById('overlayEditar').classList.remove('hidden');
+  renderIcons();
+}
+
+function abrirEdicaoCard(id) {
+  var r = efetivoPorId_(id);
+  if (!r) return;
+  EDICAO_ATUAL = { id: id, unidade: r.unidade, setor: r.setor, tituloDoc: r.tituloDoc };
+  montarFormularioEdicao_(r, 'Editar card — ' + r.tituloDoc);
+}
+
+/* Duplicar (14/09, pedido do usuário): "precisamos criar uma forma de
+   adicionar cards, o mais viavel que eu achei é o duplicação... a pessoa
+   edita o conteudo disponivel e esse se torna o novo card após o usuario
+   confirmar a conclusão". Abre o mesmo formulário de edição, pré-preenchido
+   com o conteúdo do card clicado, mas gravando num ID novo ("novo-...") —
+   o card original nunca é tocado. Não faz sentido duplicar a caixa de
+   itens graves (só existe uma por checklist), por isso ela nem mostra o
+   ícone de duplicar (ver acoesAdminHtml_). */
+function idParaDestino_(id) {
+  var partes = String(id).split('|');
+  if (partes[0] === 'checklist' && partes[2] === 'grupo') return 'checklist|' + partes[1] + '|grupo';
+  if (partes[0] === 'script') return 'script|' + partes[1] + '|bloco';
+  if (partes[0] === 'referencia') return 'referencia|' + partes[1] + '|bloco';
+  return null;
+}
+
+function duplicarCard(id) {
+  var r = efetivoPorId_(id);
+  if (!r || r.unidade === 'graves') return;
+  var destino = String(id).indexOf('novo-') === 0
+    ? (OVERRIDES[id] && OVERRIDES[id].dados && OVERRIDES[id].dados.destino)
+    : idParaDestino_(id);
+  if (!destino) return;
+  var novoId = 'novo-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  EDICAO_ATUAL = { id: novoId, unidade: r.unidade, setor: r.setor, tituloDoc: r.tituloDoc, destino: destino, novo: true };
+  montarFormularioEdicao_(r, 'Duplicar card — ' + r.tituloDoc);
+}
+
+function fecharEdicao() {
+  document.getElementById('overlayEditar').classList.add('hidden');
+  EDICAO_ATUAL = null;
+}
+
+function salvarEdicaoCard() {
+  if (!EDICAO_ATUAL) return;
+  var unidade = EDICAO_ATUAL.unidade;
+  var dados, tituloResumo;
+
+  if (unidade === 'bloco') {
+    var itens = Array.prototype.map.call(document.querySelectorAll('#edItens .item-edicao'), function (el) {
+      return { rotulo: el.querySelector('.ed-item-rotulo').value.trim(), texto: el.querySelector('.ed-item-texto').value.trim() };
+    }).filter(function (it) { return it.rotulo || it.texto; });
+    dados = { titulo: document.getElementById('edTitulo').value.trim(), itens: itens };
+    var sub = document.getElementById('edSubtitulo').value.trim();
+    if (sub) dados.subtitulo = sub;
+    tituloResumo = dados.titulo;
+  } else if (unidade === 'grupo') {
+    var itensG = Array.prototype.map.call(document.querySelectorAll('#edItens .item-edicao'), function (el) {
+      return { c: el.querySelector('.ed-item-c').value.trim(), p: Number(el.querySelector('.ed-item-p').value) || 0 };
+    }).filter(function (it) { return it.c; });
+    dados = { categoria: document.getElementById('edCategoria').value.trim(), itens: itensG };
+    tituloResumo = dados.categoria;
+  } else {
+    var itensGv = Array.prototype.map.call(document.querySelectorAll('#edItens .ed-item-grave'), function (el) { return el.value.trim(); }).filter(Boolean);
+    dados = { itens: itensGv };
+    tituloResumo = EDICAO_ATUAL.tituloDoc + ' — Itens graves';
+  }
+
+  if (unidade !== 'graves' && !tituloResumo) { alert('Preencha o título/categoria do card antes de salvar.'); return; }
+
+  var id = EDICAO_ATUAL.id, setor = EDICAO_ATUAL.setor;
+  // Card "novo-" (duplicado): o servidor guarda { destino, conteudo } —
+  // "destino" vem do EDICAO_ATUAL na primeira gravação (duplicarCard) ou,
+  // em edições seguintes desse mesmo card já criado, do override já salvo.
+  var idEhNovo = String(id).indexOf('novo-') === 0;
+  var destinoNovo = idEhNovo ? (EDICAO_ATUAL.destino || (OVERRIDES[id] && OVERRIDES[id].dados && OVERRIDES[id].dados.destino)) : null;
+  var payload = idEhNovo ? { destino: destinoNovo, conteudo: dados } : dados;
+  var ehCriacao = !!EDICAO_ATUAL.novo;
+  var mensagemConfirmar = ehCriacao
+    ? 'Você tem certeza que quer adicionar este novo card ("' + tituloResumo + '")?'
+    : 'Você tem certeza que quer atualizar o card "' + tituloResumo + '"?';
+
+  confirmar_(mensagemConfirmar, function () {
+    if (!window.google || !google.script || !google.script.run) { alert('Edição só funciona publicado no Apps Script.'); return; }
+    var chamador = google.script.run
+      .withSuccessHandler(function (res) {
+        if (!res || !res.ok) { alert((res && res.mensagem) || 'Não foi possível salvar.'); return; }
+        OVERRIDES[id] = { tipo: unidade, dados: payload, excluido: false };
+        fecharEdicao();
+        rerenderizarDocAtual_();
+        montarIndicePesquisa();
+        atualizarPontoNoticias();
+      })
+      .withFailureHandler(function () { alert('Erro de conexão ao salvar. Tente novamente.'); });
+    if (ehCriacao) chamador.adicionarConteudoNovo(id, unidade, JSON.stringify(payload), obterTokenSessao_(), tituloResumo, setor);
+    else chamador.salvarConteudoEditado(id, unidade, JSON.stringify(payload), obterTokenSessao_(), tituloResumo, setor);
+  });
+}
+
+/* ---------- Exclusão + desfazer (15s) ---------- */
+function pedirExclusaoCard(id) {
+  var r = efetivoPorId_(id);
+  if (!r) return;
+  var titulo = r.efetivo.titulo || r.efetivo.categoria || (r.tituloDoc + ' — Itens graves');
+  confirmar_('Você tem certeza que quer deletar o card "' + titulo + '"?', function () {
+    if (!window.google || !google.script || !google.script.run) { alert('Exclusão só funciona publicado no Apps Script.'); return; }
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (!res || !res.ok) { alert((res && res.mensagem) || 'Não foi possível excluir.'); return; }
+        // Cards "novo-" (duplicados) não têm "base" pra cair de volta — o
+        // conteúdo deles mora inteiramente em OVERRIDES[id].dados, então
+        // preservar esse dados aqui é o que permite o desfazer trazer o
+        // card duplicado de volta com o conteúdo certo (antes ele zerava
+        // pra null e o desfazer "restaurava" um card vazio).
+        var dadosPreservados = (OVERRIDES[id] && OVERRIDES[id].dados) || null;
+        OVERRIDES[id] = { tipo: r.unidade, dados: dadosPreservados, excluido: true };
+        rerenderizarDocAtual_();
+        montarIndicePesquisa();
+        mostrarToastDesfazer_(id, titulo, r.setor);
+      })
+      .withFailureHandler(function () { alert('Erro de conexão ao excluir. Tente novamente.'); })
+      .excluirConteudoEditado(id, r.unidade, obterTokenSessao_(), titulo, r.setor);
+  });
+}
+
+/* A novidade "card removido" só é publicada depois que os 15s de desfazer
+   passam SEM a pessoa clicar em desfazer — se isso não acontecesse, quem
+   desfazia a exclusão ainda via a notificação de que ela tinha ocorrido.
+   Bug relatado pelo usuário (14/09). */
+var DESFAZER_ID = null;
+var desfazerTimer = null;
+function mostrarToastDesfazer_(id, titulo, setor) {
+  DESFAZER_ID = id;
+  document.getElementById('toastDesfazerTexto').textContent = 'Card "' + titulo + '" removido.';
+  var el = document.getElementById('toastDesfazer');
+  el.classList.remove('hidden');
+  if (desfazerTimer) clearTimeout(desfazerTimer);
+  desfazerTimer = setTimeout(function () {
+    el.classList.add('hidden');
+    DESFAZER_ID = null;
+    if (window.google && google.script && google.script.run) {
+      google.script.run.confirmarExclusaoDefinitiva(id, titulo, setor, obterTokenSessao_());
+    }
+  }, 15000);
+}
+function desfazerExclusao() {
+  if (!DESFAZER_ID) return;
+  var id = DESFAZER_ID;
+  clearTimeout(desfazerTimer);
+  document.getElementById('toastDesfazer').classList.add('hidden');
+  DESFAZER_ID = null;
+  if (!window.google || !google.script || !google.script.run) return;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (res && res.ok) {
+        if (OVERRIDES[id]) OVERRIDES[id].excluido = false;
+        rerenderizarDocAtual_();
+        montarIndicePesquisa();
+      }
+    })
+    .restaurarConteudoEditado(id, obterTokenSessao_());
+}
+
+/* =========================================================================
+   5d. Reordenar cards por arrastar-e-soltar (só Admin) — 14/09
+
+   Pedido do usuário: "preciso que seja adicionado agora uma forma de mover
+   os cards, reorganizar com o proprio cursor, isso tambem só deve ocorrer
+   no admin". Usa Drag and Drop nativo do navegador — o card inteiro fica
+   arrastável (só quando Admin), e soltar antes/depois de outro card
+   reordena o DOM na hora e salva a nova ordem completa daquele "destino"
+   (ver ordemPara_/ordenarPorSalvo_ acima).
+   ========================================================================= */
+var ARRASTANDO_EL = null;
+
+function ativarArrastar_(containerEl, seletorCard, destino) {
+  if (!ehAdmin_() || !containerEl) return;
+  var cards = containerEl.querySelectorAll(seletorCard);
+  Array.prototype.forEach.call(cards, function (card) {
+    card.setAttribute('draggable', 'true');
+    card.classList.add('admin-arrastavel');
+
+    card.addEventListener('dragstart', function (e) {
+      ARRASTANDO_EL = card;
+      card.classList.add('arrastando');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', card.getAttribute('data-card-id') || ''); } catch (err) {}
+    });
+    card.addEventListener('dragend', function () {
+      card.classList.remove('arrastando');
+      ARRASTANDO_EL = null;
+      Array.prototype.forEach.call(containerEl.querySelectorAll(seletorCard), function (c) {
+        c.classList.remove('drop-antes', 'drop-depois');
+      });
+    });
+    card.addEventListener('dragover', function (e) {
+      if (!ARRASTANDO_EL || ARRASTANDO_EL === card) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      var meio = card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2;
+      var antes = e.clientY < meio;
+      card.classList.toggle('drop-antes', antes);
+      card.classList.toggle('drop-depois', !antes);
+    });
+    card.addEventListener('dragleave', function () { card.classList.remove('drop-antes', 'drop-depois'); });
+    card.addEventListener('drop', function (e) {
+      e.preventDefault();
+      var antes = card.classList.contains('drop-antes');
+      card.classList.remove('drop-antes', 'drop-depois');
+      if (!ARRASTANDO_EL || ARRASTANDO_EL === card) return;
+      if (antes) containerEl.insertBefore(ARRASTANDO_EL, card);
+      else containerEl.insertBefore(ARRASTANDO_EL, card.nextSibling);
+      salvarNovaOrdem_(containerEl, seletorCard, destino);
+    });
+  });
+}
+
+function salvarNovaOrdem_(containerEl, seletorCard, destino) {
+  var ids = Array.prototype.map.call(containerEl.querySelectorAll(seletorCard), function (c) {
+    return c.getAttribute('data-card-id');
+  }).filter(Boolean);
+  OVERRIDES['ordem|' + destino] = { tipo: 'ordem', dados: ids, excluido: false };
+  if (!window.google || !google.script || !google.script.run) return;
+  google.script.run
+    .withSuccessHandler(function () {})
+    .withFailureHandler(function () { alert('Erro de conexão ao salvar a nova ordem. Tente novamente.'); })
+    .salvarOrdemCartoes(destino, JSON.stringify(ids), obterTokenSessao_());
+}
+
+/* =========================================================================
+   6. Início
+   ========================================================================= */
+/* Bloqueio por dispositivo (09/09, pedido do usuário): "o site não deve
+   abrir via celular". Combina o user-agent (detecta celular/tablet mesmo
+   com a janela larga) com viewport estreito + ponteiro "grosso" (detecta
+   emuladores/telas pequenas que mascaram o user-agent). Isso é uma
+   trava de UX, não de segurança de verdade — dá pra contornar pedindo
+   "site para computador" no navegador do celular ou redimensionando o
+   DevTools; não existe como bloquear "de verdade" só com JS do cliente. */
+function ehDispositivoBloqueado_() {
+  var ua = navigator.userAgent || '';
+  var uaMovel = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|webOS/i.test(ua);
+  var telaPequenaComToque = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) && window.innerWidth < 900;
+  return uaMovel || telaPequenaComToque;
+}
+
+(function iniciar() {
+  if (ehDispositivoBloqueado_()) {
+    document.getElementById('paginaLogin').hidden = true;
+    document.getElementById('appRoot').hidden = true;
+    document.getElementById('paginaBloqueada').hidden = false;
+    renderIcons();
+    return;
+  }
+  montarCategorias();
+  montarGridSetores();
+  montarGridReferencias();
+  montarIndicePesquisa();
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') fecharPesquisa();
+    // Ctrl/Cmd + K abre a pesquisa (só quando já logado)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K') && !document.getElementById('appRoot').hidden) {
+      e.preventDefault();
+      abrirPesquisa();
+    }
+  });
+  verificarSessaoSalva(); // decide entre mostrar a tela de login ou já entrar (sessão salva e válida)
+})();
+</script>
+</body>
+</html>

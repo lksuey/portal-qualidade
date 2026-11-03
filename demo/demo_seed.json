@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "note": "Extra rows for the demo database. Library content itself (sectors, checklists, scripts) is fictional and lives in apps-script/Index.html.",
+  "novidades": [
+    { "id": "demo-news-001", "titulo": "Conteúdo atualizado", "corpo": "O card \"Checklist Venda - Ligação\" foi atualizado por admin.demo.", "data": "2026-01-15", "setorRelacionado": "vendas", "criadoPor": "admin.demo" },
+    { "id": "demo-news-002", "titulo": "Novo card adicionado", "corpo": "Um novo card (\"Argumentações - Objeções comuns\") foi adicionado por admin.demo.", "data": "2026-01-16", "setorRelacionado": "vendas", "criadoPor": "admin.demo" }
+  ]
+}

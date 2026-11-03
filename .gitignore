@@ -1,0 +1,11 @@
+# local secrets and data, never commit
+.env
+*.env
+credentials*.json
+*.xlsx
+*.csv
+__pycache__/
+*.pyc
+node_modules/
+.clasp.json
+.demo_data_today.json
