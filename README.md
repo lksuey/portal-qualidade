@@ -1,5 +1,7 @@
 # Portal da Qualidade
 
+[![tests](https://github.com/lksuey/portal-qualidade/actions/workflows/tests.yml/badge.svg)](https://github.com/lksuey/portal-qualidade/actions/workflows/tests.yml)
+
 A searchable operational library for a customer service team: quality checklists, call and chat scripts, and reference material for six departments, with role based access and in-app content administration. The front end and back end both run on Google Apps Script, and a Google Sheet holds the accounts and the content edits.
 
 This is a sanitized public copy. The original content (scripts, internal policies, real names, queue names, logos, partner banks) was removed and replaced by neutral, plausible demonstration content written for this repository. No real data is included.
