@@ -156,7 +156,7 @@ def scan(root, terms):
                 if m and not placeholder_assignment(m.group()):
                     findings["secret"].append((rel, lineno))
             if not is_b64:
-                for m in GOOGLE_ID.finditer(line):
+                for m in GOOGLE_ID.finditer(re.sub(r'integrity="sha\d+-[^"]*"', "", line)):
                     tok = m.group()
                     if re.search(r"\d", tok) and re.search(r"[A-Za-z]", tok):
                         findings["google_id"].append((rel, lineno))

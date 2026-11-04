@@ -9,3 +9,12 @@ __pycache__/
 node_modules/
 .clasp.json
 .demo_data_today.json
+
+.env.*
+!.env.example
+*.pem
+*.key
+.clasprc.json
+*.log
+.DS_Store
+Thumbs.db
