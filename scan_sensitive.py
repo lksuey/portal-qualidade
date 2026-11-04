@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-publication scan for sensitive content. Python standard library only.
 
 Prints ONLY counts and file:line locations, never the matched values.
@@ -41,9 +40,9 @@ URL_PATTERNS = [
     re.compile(r"https?://[^\s\"'<>)]*\.(?:local|internal|corp|lan)(?:[:/]|\b)", re.I),
 ]
 PATH_PATTERNS = [
-    re.compile(r"[A-Za-z]:\\\\?[A-Za-z0-9_ .$-]+\\\\?[A-Za-z0-9_ .$-]"),   # drive letter paths
+    re.compile(r"[A-Za-z]:\\\\?[A-Za-z0-9_ .$-]+\\\\?[A-Za-z0-9_ .$-]"),
     re.compile(r"[A-Za-z]:/(?:Users|Documents and Settings|Windows|Program Files)", re.I),
-    re.compile(r"\\\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_$.-]+"),                 # UNC
+    re.compile(r"\\\\[A-Za-z0-9_.-]+\\[A-Za-z0-9_$.-]+"),
     re.compile(r"(?<![\w.])/(?:Users|home)/[A-Za-z0-9._-]+/"),
 ]
 SECRET_PATTERNS = [
@@ -116,7 +115,7 @@ def iter_files(root, self_path):
 
 def scan(root, terms):
     root = Path(root).resolve()
-    findings = defaultdict(list)  # category -> [(relpath, line)]
+    findings = defaultdict(list)
     for path in iter_files(root, Path(__file__).resolve()):
         rel = path.relative_to(root).as_posix()
         ext = path.suffix.lower() if path.suffix else path.name.lower()

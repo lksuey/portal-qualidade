@@ -1,10 +1,4 @@
 'use strict';
-/**
- * Minimal in-memory mock of the Google Apps Script services used by Code.gs.
- * It lets the real server code run under plain Node (no dependencies) for the
- * local demo and for the tests. It is NOT a faithful emulation of Google: it
- * implements only what this project calls.
- */
 process.env.TZ = process.env.TZ || 'America/Sao_Paulo';
 
 const vm = require('vm');
@@ -13,7 +7,6 @@ const crypto = require('crypto');
 
 const PAD = (n, w = 2) => String(n).padStart(w, '0');
 
-/* ---------- Utilities ---------- */
 function toBuffer(data) {
   if (Buffer.isBuffer(data)) return data;
   if (Array.isArray(data)) return Buffer.from(data.map((b) => b & 0xff));
@@ -53,7 +46,6 @@ const Utilities = {
   formatDate,
 };
 
-/* ---------- Spreadsheet ---------- */
 class Range {
   constructor(sheet, row, col, numRows, numCols) {
     Object.assign(this, { sheet, row, col, numRows, numCols });
@@ -113,7 +105,6 @@ class Workbook {
   insertSheet(n) { const s = new Sheet(n); this.sheets.push(s); return s; }
 }
 
-/* ---------- Cache (enforces the 100KB per value limit of the real service) ---------- */
 function makeCache(clock) {
   const store = new Map();
   const live = (k) => {
@@ -136,10 +127,6 @@ function makeCache(clock) {
   };
 }
 
-/**
- * Builds a vm context with the Apps Script globals and loads the given source files.
- * options: { files: [paths], now: Date|number (frozen clock) , properties: {}, htmlFiles: {name: path} }
- */
 function createRuntime(options) {
   let frozen = options.now !== undefined ? new Date(options.now).getTime() : null;
   const RealDate = Date;
@@ -200,8 +187,6 @@ function createRuntime(options) {
     Session: { getScriptTimeZone: () => 'America/Sao_Paulo' },
     Logger: { log: (m) => logs.push(String(m)) },
     DriveApp: { getFileById: () => ({ setTrashed() {} }) },
-    // The real Google export endpoint is not available offline: the demo returns the
-    // sheet rows as CSV so that "export" still produces a usable file.
     UrlFetchApp: {
       fetch: (url) => {
         const m = String(url).match(/\/d\/(demo-[^/]+)\//);
@@ -214,8 +199,6 @@ function createRuntime(options) {
   };
   const context = vm.createContext(sandbox);
   (options.files || []).forEach((f) => vm.runInContext(fs.readFileSync(f, 'utf8'), context, { filename: f }));
-  // `const` declarations in the sources are not properties of the context; expose
-  // them (and `let`) through an evaluator so tests and the server can read them.
   const evaluate = (code) => vm.runInContext(code, context);
   return { context, evaluate, workbooks, properties, logs, cache, triggers, clock, setNow };
 }

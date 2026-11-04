@@ -1,34 +1,3 @@
-/**
- * PORTAL DA QUALIDADE — central de processos e novidades da equipe de
- * atendimento, agora com login (09/09).
- *
- * ATENÇÃO — leia antes de rodar:
- * O Apps Script (e o navegador) NÃO tem acesso ao IP nem ao endereço MAC de
- * quem acessa a página — isso não existe nem no HtmlService nem em nenhuma
- * API do Apps Script (não é uma limitação deste código, é do próprio Google
- * Apps Script). O pedido original era travar por "IP e MAC address"; o mais
- * próximo tecnicamente possível — e o que foi implementado aqui — é travar
- * por dois eixos que dá pra medir de verdade:
- *   1) o LOGIN que está sendo tentado (trava quem tenta adivinhar a senha
- *      de um usuário específico, não importa de onde vem a tentativa);
- *   2) um TOKEN DE DISPOSITIVO gerado no navegador na primeira visita e
- *      guardado no localStorage — funciona como um "RG do navegador",
- *      persiste entre sessões daquele aparelho/navegador, mas não é o MAC
- *      de verdade (se a pessoa limpar os dados do site ou trocar de
- *      navegador, ganha um token novo).
- * Toda tentativa errada soma nos dois contadores; o mais restritivo dos
- * dois é quem trava o login. Ver verificarLogin() mais abaixo.
- *
- * Primeira execução: em Project Settings > Script Properties, crie as
- * propriedades PORTAL_QUALIDADE_SEED_ADMIN.DEMO, PORTAL_QUALIDADE_SEED_AUDITOR.DEMO
- * e PORTAL_QUALIDADE_SEED_OPERATOR.DEMO com as senhas iniciais que você quiser
- * (nenhuma senha mora no código). Depois abra este arquivo no editor,
- * selecione a função "instalar" e clique em Executar: isso cria a planilha
- * "Portal da Qualidade — Base de Login" com as contas iniciais
- * (Admin/Auditor/Operador) e as abas de controle de tentativas e log de
- * acessos. Rodar de novo depois de já instalado não duplica nada.
- */
-
 var PLANILHA_ID_PROP = 'PORTAL_QUALIDADE_PLANILHA_ID';
 var CHAVE_SESSAO_PROP = 'PORTAL_QUALIDADE_CHAVE_SESSAO';
 var ABA_USUARIOS = 'Usuarios';
@@ -44,9 +13,6 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-/* =========================================================================
-   Instalação — roda uma vez, manualmente, pelo editor do Apps Script.
-   ========================================================================= */
 function instalar() {
   var props = PropertiesService.getScriptProperties();
   var idExistente = props.getProperty(PLANILHA_ID_PROP);
@@ -56,7 +22,6 @@ function instalar() {
       Logger.log('Já estava instalado. Planilha: ' + existente.getUrl());
       return;
     } catch (e) {
-      // O ID salvo não abre mais (planilha apagada) — reinstala do zero.
     }
   }
 
@@ -67,7 +32,7 @@ function instalar() {
   usuarios.setName(ABA_USUARIOS);
   usuarios.appendRow(['Login', 'SenhaHash', 'Salt', 'Patente', 'Ativo', 'CriadoEm']);
   usuarios.setFrozenRows(1);
-  usuarios.hideColumns(2, 2); // esconde SenhaHash e Salt na visualização padrão
+  usuarios.hideColumns(2, 2);
 
   var seed = [
     { login: 'admin.demo', patente: 'Admin' },
@@ -107,10 +72,6 @@ function criarAbasConteudo_(ss) {
   }
 }
 
-/* Rode esta função UMA VEZ pelo editor do Apps Script se você já tinha
-   instalado o portal ANTES de existir a edição de conteúdo (10/09) — ela
-   só adiciona as abas ConteudoEditado e Novidades na planilha que já
-   existe, sem mexer no resto. Rodar de novo não duplica nada. */
 function instalarEdicaoConteudo_10_09() {
   criarAbasConteudo_(planilha_());
   Logger.log('Abas de edição de conteúdo prontas.');
@@ -122,12 +83,6 @@ function planilha_() {
   return SpreadsheetApp.openById(id);
 }
 
-/* =========================================================================
-   Troca de senha: instalar() só semeia as contas na primeira vez, então
-   pra atualizar a senha de um usuário que já existe na planilha é preciso
-   isso aqui (nunca editar a coluna SenhaHash na mão — ela é derivada da
-   senha + salt, não dá pra simplesmente escrever a senha nova nela).
-   ========================================================================= */
 function redefinirSenha_(login, novaSenha) {
   var aba = planilha_().getSheetByName(ABA_USUARIOS);
   var dados = aba.getDataRange().getValues();
@@ -135,15 +90,13 @@ function redefinirSenha_(login, novaSenha) {
     if (String(dados[i][0]).toLowerCase() === login.toLowerCase()) {
       var salt = Utilities.getUuid();
       aba.getRange(i + 1, 2, 1, 2).setValues([[hashSenha_(novaSenha, salt), salt]]);
-      try { CacheService.getScriptCache().remove('usuarios_v1'); } catch (e) {} // senão a senha antiga ainda "funciona" até o cache expirar
+      try { CacheService.getScriptCache().remove('usuarios_v1'); } catch (e) {}
       return true;
     }
   }
   return false;
 }
 
-/* Renomeia o LOGIN de um usuário já existente (mantém senha, salt e
-   patente — só troca a coluna Login). */
 function renomearLogin_(loginAntigo, loginNovo) {
   var aba = planilha_().getSheetByName(ABA_USUARIOS);
   var dados = aba.getDataRange().getValues();
@@ -157,23 +110,11 @@ function renomearLogin_(loginAntigo, loginNovo) {
   return false;
 }
 
-/* =========================================================================
-   Hash de senha — SHA-256 com salt aleatório por usuário (Apps Script não
-   tem bcrypt/scrypt nativos; SHA-256 + salt é o que dá pra fazer sem
-   biblioteca externa, e já é muito melhor que guardar a senha em texto
-   puro na planilha).
-   ========================================================================= */
 function hashSenha_(senha, salt) {
   var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + ':' + senha);
   return bytes.map(function (b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
 }
 
-/* =========================================================================
-   Regras de tentativas e bloqueio progressivo (pedido do usuário, 09/09):
-   5 tentativas seguidas -> 2 min | 10 -> 1h | 15 -> 6h | 20 -> 48h.
-   O contador é cumulativo desde o último acerto (só zera em login com
-   sucesso) — não zera sozinho quando o bloqueio expira.
-   ========================================================================= */
 var LIMITES_BLOQUEIO = [
   { minimo: 20, minutos: 48 * 60 },
   { minimo: 15, minutos: 6 * 60 },
@@ -187,15 +128,6 @@ function duracaoBloqueioMinutos_(tentativas) {
   return 0;
 }
 
-/* ---------- Acesso otimizado à aba de tentativas ----------
-   A versão original fazia até 4 leituras completas da aba TentativasLogin
-   por tentativa de login (uma pra cada chave, em cada função) — cada
-   chamada ao SpreadsheetApp é uma viagem de rede, e isso é a causa mais
-   provável da lentidão percebida (pedido do usuário, 09/09: "a
-   responsividade da pagina... está demorando bastante"). Agora é 1 leitura
-   só (lerTentativas_), guardada em memória, e as escritas só acontecem
-   quando realmente há algo pra gravar — no caminho mais comum (senha
-   certa de primeira, sem bloqueio ativo), não escreve nada nessa aba. */
 function lerTentativas_() {
   var aba = planilha_().getSheetByName(ABA_TENTATIVAS);
   var dados = aba.getDataRange().getValues();
@@ -228,7 +160,7 @@ function registrarFalhaEm_(estado, chave) {
 
 function limparTentativasEm_(estado, chave) {
   var reg = estado.mapa[chave];
-  if (!reg) return; // nunca teve tentativa registrada — nada pra limpar, pula a escrita
+  if (!reg) return;
   estado.aba.getRange(reg.linha, 2, 1, 3).setValues([[0, new Date(), '']]);
 }
 
@@ -244,17 +176,7 @@ function mensagemBloqueio_(ate) {
   return 'Muitas tentativas. Tente novamente em ' + horas + ' hora' + (horas > 1 ? 's' : '') + '.';
 }
 
-/* =========================================================================
-   Validação de entrada — anti-emoji e anti-"injeção" (não existe SQL nessa
-   pilha — é Google Sheets via SpreadsheetApp, não banco relacional — então
-   "SQL Injection" de verdade não se aplica; o que dá pra e deve ser feito é
-   nunca usar login/senha para montar fórmula/consulta dinâmica, e nunca
-   fazer nada além de comparação literal de string, o que este código já
-   faz. A validação abaixo é uma camada extra de sanidade em cima disso.)
-   ========================================================================= */
 var REGEX_LOGIN_VALIDO = /^[A-Za-z0-9._-]{3,40}$/;
-// Emojis e símbolos pictográficos comuns (não cobre 100% do Unicode, mas
-// cobre a esmagadora maioria dos emojis usados em teclados normais).
 var REGEX_EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/u;
 
 function entradaValida_(login, senha) {
@@ -268,23 +190,12 @@ function entradaValida_(login, senha) {
 
 var MENSAGEM_ERRO_PADRAO = 'Login ou Senha incorreto. Tente novamente.';
 
-/* =========================================================================
-   Login — chamada pelo cliente via google.script.run.
-   Resposta de erro é SEMPRE a mesma frase pra credencial errada, por
-   pedido do usuário — só a mensagem de bloqueio por excesso de tentativas
-   é diferente (não revela se a credencial em si estava certa ou errada).
-   ========================================================================= */
-/* Usuarios muda raramente (só quando alguém mexe na planilha na mão), então
-   cacheia por 5 minutos com CacheService — que é memória, não tem o custo
-   de rede do SpreadsheetApp. Isso soma com a otimização da aba de
-   tentativas pra deixar o caminho mais comum (senha certa, sem bloqueio)
-   em praticamente 1 chamada de rede em vez de 6+. */
 function lerUsuarios_() {
   var cache = CacheService.getScriptCache();
   var cacheado = cache.get('usuarios_v1');
   if (cacheado) return JSON.parse(cacheado);
   var dados = planilha_().getSheetByName(ABA_USUARIOS).getDataRange().getValues();
-  try { cache.put('usuarios_v1', JSON.stringify(dados), 300); } catch (e) { /* linha muito grande pro cache — segue sem cachear */ }
+  try { cache.put('usuarios_v1', JSON.stringify(dados), 300); } catch (e) {  }
   return dados;
 }
 
@@ -301,7 +212,6 @@ function verificarLogin(login, senha, deviceToken) {
   var chaveLogin = 'login:' + login.toLowerCase();
   var chaveDispositivo = 'device:' + deviceToken;
 
-  // 1 leitura só da aba de tentativas, cobrindo as duas chaves.
   var estado = lerTentativas_();
   var bloqueioAtivo = maisTarde_(bloqueioDoRegistro_(estado.mapa[chaveLogin]), bloqueioDoRegistro_(estado.mapa[chaveDispositivo]));
   if (bloqueioAtivo) {
@@ -325,35 +235,18 @@ function verificarLogin(login, senha, deviceToken) {
     return { ok: false, mensagem: MENSAGEM_ERRO_PADRAO };
   }
 
-  // Só escreve se havia contador pra zerar — no caminho mais comum (acertou
-  // de primeira) não existe registro nenhum ainda, então isso não gera
-  // escrita nenhuma na planilha.
   limparTentativasEm_(estado, chaveLogin);
   limparTentativasEm_(estado, chaveDispositivo);
   return { ok: true, patente: usuario.patente, token: gerarTokenSessao_(usuario.login, usuario.patente) };
 }
 
-/* Log de acesso — chamado pelo cliente separadamente, DEPOIS de já ter
-   processado a resposta do login (sucesso ou erro), sem que o cliente
-   espere essa chamada terminar. Pedido do usuário (09/09): "preciso que
-   isso seja feito pós login ou que haja uma otimização melhor" — aqui
-   ficaram as duas coisas: a escrita foi tirada do caminho crítico E o
-   acesso à planilha foi otimizado (ver lerTentativas_/lerUsuarios_). */
 function registrarAcessoAsync(login, patente, sucesso, deviceToken) {
   try {
     planilha_().getSheetByName(ABA_LOG).appendRow([new Date(), login, patente, sucesso, deviceToken]);
   } catch (e) {
-    // Nunca deixa o log de acesso travar nada — é best-effort.
   }
 }
 
-/* =========================================================================
-   Token de sessão — assinado com uma chave guardada nas Script Properties,
-   pra o cliente não conseguir forjar a própria patente no localStorage.
-   Não é um JWT completo, mas resolve o mesmo problema pra esse tamanho de
-   projeto: validar, do lado do servidor, que o token realmente veio daqui.
-   Expira em 8 horas (duração de um turno de trabalho).
-   ========================================================================= */
 function chaveAssinatura_() {
   var props = PropertiesService.getScriptProperties();
   var k = props.getProperty(CHAVE_SESSAO_PROP);
@@ -370,9 +263,6 @@ function gerarTokenSessao_(login, patente) {
   return Utilities.base64EncodeWebSafe(payload) + '.' + assinar_(payload);
 }
 
-/* Chamada pelo cliente ao carregar a página, pra saber se o token salvo no
-   localStorage ainda é válido (evita pedir login de novo a cada acesso
-   dentro da janela de 8h). */
 function validarTokenSessao(token) {
   try {
     var partes = String(token || '').split('.');
@@ -388,23 +278,6 @@ function validarTokenSessao(token) {
   }
 }
 
-/* =========================================================================
-   Edição de conteúdo pelo Admin (10/09)
-
-   O conteúdo "de fábrica" (checklists, scripts, referências) continua
-   fixo dentro do Index.html — não foi todo migrado pra planilha, o que
-   deixaria a leitura inicial da página muito mais lenta. Em vez disso,
-   cada card/bloco tem um ID estável (calculado no cliente a partir da
-   posição dele no array de origem) e as EDIÇÕES ficam guardadas à parte,
-   na aba ConteudoEditado, como "diffs" — no carregamento da página o
-   cliente busca esses diffs e aplica por cima do conteúdo padrão.
-
-   Exclusão nunca remove nada de verdade do conteúdo original — só marca
-   Excluido=true pro ID daquele card. Isso é o que permite "desfazer": a
-   qualquer momento, restaurarConteudo() só volta o Excluido pra false.
-   Também é o que mantém os IDs dos outros cards estáveis (apagar um bloco
-   não desloca a posição dos que vêm depois).
-   ========================================================================= */
 
 function linhaConteudoPorId_(aba, id) {
   var dados = aba.getDataRange().getValues();
@@ -414,9 +287,6 @@ function linhaConteudoPorId_(aba, id) {
   return -1;
 }
 
-/* Chamada pelo cliente ao entrar no portal — traz de uma vez as edições
-   já feitas (pra aplicar por cima do conteúdo padrão) e as novidades
-   registradas por edições (pra somar às novidades de exemplo). */
 function carregarConteudoEditado() {
   var ss = planilha_();
   var overrides = [];
@@ -449,22 +319,15 @@ function registrarNovidade_(titulo, corpo, setorRelacionado, autor) {
     var aba = planilha_().getSheetByName(ABA_NOVIDADES);
     aba.appendRow([Utilities.getUuid(), titulo, corpo, new Date(), setorRelacionado || '', autor || '']);
   } catch (e) {
-    // Nunca deixa a notificação travar a edição em si.
   }
 }
 
-/* Toda escrita de conteúdo exige um token de sessão válido com patente
-   Admin — nunca confia na patente que o cliente diz ter, só na que está
-   assinada dentro do token (ver gerarTokenSessao_). */
 function exigirAdmin_(tokenSessao) {
   var v = validarTokenSessao(tokenSessao);
   if (!v.ok || v.patente !== 'Admin') return null;
   return v;
 }
 
-/* Salva (cria ou substitui) o conteúdo editado de um card. `dadosJson` já
-   vem serializado do cliente (string JSON) — o servidor não precisa
-   entender o formato, só guardar e devolver depois. */
 function salvarConteudoEditado(id, tipo, dadosJson, tokenSessao, tituloResumo, setorResumo) {
   var v = exigirAdmin_(tokenSessao);
   if (!v) return { ok: false, mensagem: 'Sem permissão para editar conteúdo.' };
@@ -485,11 +348,6 @@ function salvarConteudoEditado(id, tipo, dadosJson, tokenSessao, tituloResumo, s
   return { ok: true };
 }
 
-/* Cria um card novo por duplicação (pedido do usuário, 14/09: "precisamos
-   criar uma forma de adicionar cards, o mais viavel que eu achei é o
-   duplicação"). O ID já vem pronto do cliente ("novo-...") e nunca existia
-   antes, então isso sempre é um appendRow — a única diferença real pra
-   salvarConteudoEditado() é o texto da novidade publicada. */
 function adicionarConteudoNovo(id, tipo, dadosJson, tokenSessao, tituloResumo, setorResumo) {
   var v = exigirAdmin_(tokenSessao);
   if (!v) return { ok: false, mensagem: 'Sem permissão para adicionar conteúdo.' };
@@ -510,14 +368,6 @@ function adicionarConteudoNovo(id, tipo, dadosJson, tokenSessao, tituloResumo, s
   return { ok: true };
 }
 
-/* Salva a ordem de exibição escolhida pelo Admin pra um "destino" (ex.:
-   "checklist|3|grupo" = os grupos de critérios daquele checklist). Fica
-   guardada na mesma aba, com um ID próprio ("ordem|<destino>") — o valor é
-   só a lista de IDs de card na ordem desejada. Não gera novidade (o
-   arrasto acontece a cada solto do mouse; virar uma notificação a cada vez
-   ia poluir o painel de novidades). Pedido do usuário (14/09): "preciso
-   que seja adicionado agora uma forma de mover os cards, reorganizar com o
-   proprio cursor". */
 function salvarOrdemCartoes(destino, ordemJson, tokenSessao) {
   var v = exigirAdmin_(tokenSessao);
   if (!v) return { ok: false, mensagem: 'Sem permissão para reordenar conteúdo.' };
@@ -533,14 +383,6 @@ function salvarOrdemCartoes(destino, ordemJson, tokenSessao) {
   return { ok: true };
 }
 
-/* Exclusão é sempre "soft" — só marca Excluido=true, nunca apaga a linha.
-   Isso é o que possibilita o desfazer de 15s no cliente. */
-/* Não registra a novidade aqui na hora — o cliente ainda oferece 15s de
-   "desfazer", e se a pessoa desfizer, a exclusão nunca "aconteceu" de
-   verdade pra quem só vê a tela. A novidade só é criada por
-   confirmarExclusaoDefinitiva(), chamada pelo cliente quando os 15s
-   passam SEM desfazer. Bug relatado pelo usuário (14/09): "a notificação
-   de update aparece mesmo após desfazer o deletamento". */
 function excluirConteudoEditado(id, tipo, tokenSessao, tituloResumo, setorResumo) {
   var v = exigirAdmin_(tokenSessao);
   if (!v) return { ok: false, mensagem: 'Sem permissão para excluir conteúdo.' };
@@ -556,10 +398,6 @@ function excluirConteudoEditado(id, tipo, tokenSessao, tituloResumo, setorResumo
   return { ok: true };
 }
 
-/* Chamada pelo cliente só depois que a janela de 15s de "desfazer" passa
-   sem a pessoa desfazer — é nesse momento que a remoção vira definitiva de
-   verdade e a novidade é publicada. Confere de novo se continua excluído
-   (se foi desfeito, não notifica nada). */
 function confirmarExclusaoDefinitiva(id, tituloResumo, setorResumo, tokenSessao) {
   var v = exigirAdmin_(tokenSessao);
   if (!v) return { ok: false };
@@ -567,7 +405,7 @@ function confirmarExclusaoDefinitiva(id, tituloResumo, setorResumo, tokenSessao)
   var linha = linhaConteudoPorId_(aba, id);
   if (linha === -1) return { ok: false };
   var excluido = aba.getRange(linha, 4).getValue();
-  if (excluido !== true) return { ok: true }; // foi desfeito nesse meio-tempo — não notifica
+  if (excluido !== true) return { ok: true };
   registrarNovidade_(
     'Conteúdo removido',
     'O card "' + (tituloResumo || id) + '" foi removido por ' + v.login + '.',
@@ -576,8 +414,6 @@ function confirmarExclusaoDefinitiva(id, tituloResumo, setorResumo, tokenSessao)
   return { ok: true };
 }
 
-/* Desfazer — só volta Excluido pra false, não gera novidade nova (a
-   remoção nunca chegou a "acontecer" de fato pra quem só via a tela). */
 function restaurarConteudoEditado(id, tokenSessao) {
   var v = exigirAdmin_(tokenSessao);
   if (!v) return { ok: false };

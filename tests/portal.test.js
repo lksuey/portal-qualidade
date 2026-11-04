@@ -1,7 +1,4 @@
 'use strict';
-// Run with: node --test tests/portal.test.js     (Node 18+, no dependencies)
-// Executes the real apps-script/Codigo.gs inside an in-memory mock of the Apps Script
-// services (demo/gas_mock.js), and validates the structure of the demo content in Index.html.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -19,7 +16,6 @@ function login(rt, user) {
   return r.token;
 }
 
-/* ------------------------------------------------------------------ install and accounts */
 test('install creates the sheets and the three seeded accounts from Script Properties', () => {
   const rt = fresh();
   const names = rt.workbook.getSheets().map((s) => s.getName()).sort();
@@ -73,7 +69,6 @@ test('lockout escalates by cumulative failures and releases with the clock', () 
   const locked = plain(rt.context.verificarLogin('auditor.demo', 'bad-pass', DEVICE));
   assert.equal(locked.bloqueado, true);
   assert.match(locked.mensagem, /Muitas tentativas/);
-  // a different browser is not locked by the device counter, but the login counter still applies
   assert.equal(rt.context.verificarLogin('auditor.demo', demoPassword('auditor.demo'), 'other-device-0002').bloqueado, true);
   rt.setNow(Date.parse(NOW) + 3 * 60 * 1000);
   assert.equal(rt.context.verificarLogin('auditor.demo', demoPassword('auditor.demo'), DEVICE).ok, true);
@@ -101,7 +96,7 @@ test('session token cannot be forged and expires after 8 hours', () => {
 
 test('password reset invalidates the old password immediately (cache cleared) and rename keeps the hash', () => {
   const rt = fresh();
-  assert.equal(rt.context.verificarLogin('operator.demo', demoPassword('operator.demo'), DEVICE).ok, true); // warms the users cache
+  assert.equal(rt.context.verificarLogin('operator.demo', demoPassword('operator.demo'), DEVICE).ok, true);
   assert.equal(rt.context.redefinirSenha_('operator.demo', 'brand-new-pass'), true);
   assert.equal(rt.context.verificarLogin('operator.demo', demoPassword('operator.demo'), 'dev-aaaaaaaa').ok, false);
   assert.equal(rt.context.verificarLogin('operator.demo', 'brand-new-pass', 'dev-bbbbbbbb').ok, true);
@@ -110,7 +105,6 @@ test('password reset invalidates the old password immediately (cache cleared) an
   assert.equal(rt.context.redefinirSenha_('ghost', 'whatever'), false);
 });
 
-/* ------------------------------------------------------------------ content editing */
 const CARD = 'script|0|bloco|1';
 const payload = JSON.stringify({ titulo: 'Sondagem revisada', itens: [{ rotulo: 'Atendente', texto: 'Texto novo' }] });
 
@@ -150,13 +144,11 @@ test('delete is soft with undo: the news item is only published once the removal
   assert.equal(plain(rt.context.carregarConteudoEditado()).overrides[0].excluido, true);
   assert.equal(plain(rt.context.carregarConteudoEditado()).novidades.length, newsAfterSave, 'no news yet');
 
-  // undo within the window: restored and still no news
   assert.equal(rt.context.restaurarConteudoEditado(CARD, admin).ok, true);
   rt.context.confirmarExclusaoDefinitiva(CARD, 'Sondagem', 'vendas', admin);
   assert.equal(plain(rt.context.carregarConteudoEditado()).overrides[0].excluido, false);
   assert.equal(plain(rt.context.carregarConteudoEditado()).novidades.length, newsAfterSave, 'undo never published a removal');
 
-  // delete again and let the window pass
   rt.context.excluirConteudoEditado(CARD, 'bloco', admin, 'Sondagem', 'vendas');
   rt.context.confirmarExclusaoDefinitiva(CARD, 'Sondagem', 'vendas', admin);
   const after = plain(rt.context.carregarConteudoEditado());
@@ -194,13 +186,12 @@ test('duplicated cards are appended and announced', () => {
   assert.match(data.novidades[0].titulo, /Novo card/);
 });
 
-/* ------------------------------------------------------------------ demo content integrity */
 function loadContent() {
   const html = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Index.html'), 'utf8');
   const start = html.indexOf('var SETORES = [');
-  const endMarker = html.indexOf('   4. Navegação / render');
+  const endMarker = html.indexOf('\nfunction ', html.indexOf('var NOTICIAS = ['));
   assert.ok(start > 0 && endMarker > start, 'content block markers');
-  const code = html.slice(start, html.lastIndexOf('/* ====', endMarker));
+  const code = html.slice(start, endMarker);
   const sandbox = {};
   vm.runInNewContext(code + '\n;this.out = { SETORES, CHECKLISTS, SCRIPTS, REFERENCIAS, FILAS_TRANSFERENCIA, CODIGOS_BANCOS, NOTICIAS, SETORES_COM_FILAS, REFERENCIAS_GERAIS, CLASSIFICACOES_PADRAO };', sandbox);
   return plain(sandbox.out);
